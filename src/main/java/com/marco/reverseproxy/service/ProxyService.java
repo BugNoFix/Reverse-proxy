@@ -178,9 +178,15 @@ public class ProxyService {
                         log.info("304 Not Modified: {} {} - using cached body", method, uri);
                         // Update cache metadata
                         cacheService.updateAfterRevalidation(method, hostHeader, uri, request.getHeaders(), response.getHeaders());
-                        // Return cached body with updated headers
+
+                        // Merge cached headers with 304 headers (304 can update cache metadata)
+                        HttpHeaders mergedHeaders = new HttpHeaders();
+                        mergedHeaders.addAll(filterResponseHeaders(cachedResponse.getHeaders()));
+                        mergedHeaders.addAll(filterResponseHeaders(response.getHeaders()));
+
+                        // Return cached body with merged headers
                         return ResponseEntity.status(200)
-                                .headers(filterResponseHeaders(response.getHeaders()))
+                                .headers(mergedHeaders)
                                 .body(cachedResponse.getBody());
                     }
                     
