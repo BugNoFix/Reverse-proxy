@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -188,6 +189,27 @@ public class CacheService {
     public void clear() {
         cache.clear();
         log.info("Cache cleared");
+    }
+
+    /**
+     * Invalidate cached GET/HEAD entries for a resource after unsafe methods.
+     */
+    public void invalidateUnsafe(String host, String uri) {
+        CacheKey getKey = CacheKey.createSimple(HttpMethod.GET, host, uri);
+        CacheKey headKey = CacheKey.createSimple(HttpMethod.HEAD, host, uri);
+
+        varyIndex.remove(getKey);
+        varyIndex.remove(headKey);
+
+        synchronized (cache) {
+            cache.keySet().removeIf(key ->
+                    Objects.equals(key.getHost(), host)
+                            && Objects.equals(key.getUri(), uri)
+                            && (key.getMethod() == HttpMethod.GET || key.getMethod() == HttpMethod.HEAD)
+            );
+        }
+
+        log.debug("Invalidated cache for {} {}", host, uri);
     }
 
     /**

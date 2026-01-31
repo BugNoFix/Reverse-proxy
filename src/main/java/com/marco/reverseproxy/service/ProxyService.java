@@ -71,6 +71,10 @@ public class ProxyService {
         // Check cache (only for GET/HEAD)
         HttpMethod method = request.getMethod();
         String uri = request.getURI().toString();
+
+        if (isUnsafeMethod(method)) {
+            cacheService.invalidateUnsafe(normalizedHost, uri);
+        }
         CachedResponse cachedResponse = cacheService.get(method, normalizedHost, uri, request.getHeaders());
         
         if (cachedResponse != null && cachedResponse.isFresh()) {
@@ -247,6 +251,13 @@ public class ProxyService {
 
     private boolean isHopByHopHeader(String headerName) {
         return HOP_BY_HOP_HEADERS.contains(headerName.toLowerCase());
+    }
+
+    private boolean isUnsafeMethod(HttpMethod method) {
+        return method == HttpMethod.POST
+                || method == HttpMethod.PUT
+                || method == HttpMethod.PATCH
+                || method == HttpMethod.DELETE;
     }
 
 }
