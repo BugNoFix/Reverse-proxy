@@ -66,8 +66,8 @@ public class ProxyService {
                     .body("Service Unavailable: No healthy hosts".getBytes()));
         }
 
-        // Select a host using load balancer (default: random)
-        LoadBalancer loadBalancer = loadBalancerFactory.getLoadBalancer("random");
+        // Select a host using configured load balancer strategy
+        LoadBalancer loadBalancer = loadBalancerFactory.getLoadBalancer(service.getStrategy());
         ProxyConfiguration.HostConfig selectedHost = loadBalancer.selectHost(healthyHosts, service);
 
         if (selectedHost == null) {

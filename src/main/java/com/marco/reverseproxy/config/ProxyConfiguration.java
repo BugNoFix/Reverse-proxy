@@ -24,6 +24,7 @@ public class ProxyConfiguration {
     public static class ServiceConfig {
         private String name;
         private String domain;
+        private String strategy = "round-robin"; // Default strategy
         private List<HostConfig> hosts;
     }
     

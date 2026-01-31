@@ -7,6 +7,7 @@ proxy:
   services:
     - name: my-service
       domain: my-service.my-company.com
+      strategy: round-robin  # Options: random, round-robin
       hosts:
         - address: "127.0.0.1"
           port: 9090
@@ -16,7 +17,7 @@ proxy:
 # Optional: additional local services for testing
     # - name: another-service
     #   domain: another-service.local
-    #   loadBalancerStrategy: random
+    #   strategy: random
     #   hosts:
     #     - address: "127.0.0.1"
     #       port: 9092

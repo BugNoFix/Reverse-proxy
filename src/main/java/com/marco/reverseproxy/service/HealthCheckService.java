@@ -21,7 +21,12 @@ import java.time.Duration;
 public class HealthCheckService {
 
     private final ServiceRegistry serviceRegistry;
-    private final WebClient.Builder webClientBuilder;
+    private final WebClient webClient;
+    
+    public HealthCheckService(ServiceRegistry serviceRegistry, WebClient.Builder webClientBuilder) {
+        this.serviceRegistry = serviceRegistry;
+        this.webClient = webClientBuilder.build(); // Reuse single instance
+    }
 
     /**
      * Perform health checks on all configured hosts every 30 seconds
@@ -37,8 +42,6 @@ public class HealthCheckService {
 
     private void checkHost(ProxyConfiguration.ServiceConfig service, ProxyConfiguration.HostConfig host) {
         String healthCheckUrl = String.format("http://%s:%d/health", host.getAddress(), host.getPort());
-        
-        WebClient webClient = webClientBuilder.build();
         
         webClient.get()
                 .uri(healthCheckUrl)
