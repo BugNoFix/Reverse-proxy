@@ -82,18 +82,21 @@ public class CacheService {
             return null;
         }
 
-        // Check if cacheable
+        // Check if cacheable (atomic operation with removal)
         if (!cachedResponse.isCacheable()) {
             log.debug("Cache entry not cacheable (no-store or private): {} {}", method, uri);
 
-            CacheKey keyToRemove = simpleKey;
-            String varyHeader = varyIndex.get(simpleKey);
-            if (varyHeader != null) {
-                keyToRemove = CacheKey.create(method, host, uri, requestHeaders, varyHeader);
-            }
+            // Atomic removal from both cache and varyIndex
+            synchronized (cache) {
+                CacheKey keyToRemove = simpleKey;
+                String varyHeader = varyIndex.get(simpleKey);
+                if (varyHeader != null) {
+                    keyToRemove = CacheKey.create(method, host, uri, requestHeaders, varyHeader);
+                }
 
-            cache.remove(keyToRemove);
-            varyIndex.remove(simpleKey);
+                cache.remove(keyToRemove);
+                varyIndex.remove(simpleKey);
+            }
             return null;
         }
 
@@ -205,10 +208,11 @@ public class CacheService {
         CacheKey getKey = CacheKey.createSimple(HttpMethod.GET, host, uri);
         CacheKey headKey = CacheKey.createSimple(HttpMethod.HEAD, host, uri);
 
-        varyIndex.remove(getKey);
-        varyIndex.remove(headKey);
-
+        // Atomic removal from both cache and varyIndex
         synchronized (cache) {
+            varyIndex.remove(getKey);
+            varyIndex.remove(headKey);
+
             cache.keySet().removeIf(key ->
                     Objects.equals(key.getHost(), host)
                             && Objects.equals(key.getUri(), uri)
