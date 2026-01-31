@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -22,18 +23,20 @@ import java.util.regex.Pattern;
 @Service
 public class CacheService {
 
-    // LRU cache with max 10,000 entries
+    // LRU cache with max 10,000 entries (thread-safe)
     private static final int MAX_CACHE_ENTRIES = 10_000;
-    private final Map<CacheKey, CachedResponse> cache = new LinkedHashMap<CacheKey, CachedResponse>(16, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<CacheKey, CachedResponse> eldest) {
-            boolean shouldRemove = size() > MAX_CACHE_ENTRIES;
-            if (shouldRemove) {
-                log.debug("LRU eviction: removing cache entry for {}", eldest.getKey());
+    private final Map<CacheKey, CachedResponse> cache = Collections.synchronizedMap(
+        new LinkedHashMap<CacheKey, CachedResponse>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<CacheKey, CachedResponse> eldest) {
+                boolean shouldRemove = size() > MAX_CACHE_ENTRIES;
+                if (shouldRemove) {
+                    log.debug("LRU eviction: removing cache entry for {}", eldest.getKey());
+                }
+                return shouldRemove;
             }
-            return shouldRemove;
         }
-    };
+    );
 
     private static final Pattern MAX_AGE_PATTERN = Pattern.compile("max-age\\s*=\\s*(\\d+)");
     private static final Pattern S_MAXAGE_PATTERN = Pattern.compile("s-maxage\\s*=\\s*(\\d+)");
@@ -118,9 +121,7 @@ public class CacheService {
             key = CacheKey.createSimple(method, uri);
         }
 
-        synchronized (cache) {
-            cache.put(key, cachedResponse);
-        }
+        cache.put(key, cachedResponse);
 
         log.info("Cached response: {} {} (max-age: {}s, has-etag: {}, has-last-modified: {})",
                 method, uri, cachedResponse.getMaxAgeSeconds(), 
@@ -134,11 +135,10 @@ public class CacheService {
                                        HttpHeaders responseHeaders) {
         CacheKey key = CacheKey.createSimple(method, uri);
         
-        synchronized (cache) {
-            CachedResponse cachedResponse = cache.get(key);
-            if (cachedResponse != null) {
-                // Update cache timestamp and metadata
-                cachedResponse.setCachedAt(Instant.now());
+        CachedResponse cachedResponse = cache.get(key);
+        if (cachedResponse != null) {
+            // Update cache timestamp and metadata
+            cachedResponse.setCachedAt(Instant.now());
                 
                 // Update ETag if provided
                 String etag = responseHeaders.getFirst("ETag");
@@ -155,16 +155,13 @@ public class CacheService {
                 log.debug("Updated cache after 304: {} {} (new max-age: {}s)", 
                         method, uri, cachedResponse.getMaxAgeSeconds());
             }
-        }
     }
 
     /**
      * Clear all cache entries
      */
     public void clear() {
-        synchronized (cache) {
-            cache.clear();
-        }
+        cache.clear();
         log.info("Cache cleared");
     }
 

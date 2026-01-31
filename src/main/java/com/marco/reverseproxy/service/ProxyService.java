@@ -199,9 +199,9 @@ public class ProxyService {
     private HttpHeaders prepareHeaders(ServerHttpRequest request) {
         HttpHeaders headers = new HttpHeaders();
 
-        // Copy all headers except hop-by-hop headers
+        // Copy all headers except hop-by-hop headers and Host (backend has its own host)
         request.getHeaders().forEach((headerName, headerValues) -> {
-            if (!isHopByHopHeader(headerName)) {
+            if (!isHopByHopHeader(headerName) && !headerName.equalsIgnoreCase("host")) {
                 headerValues.forEach(headerValue -> {
                     headers.add(headerName, headerValue);
                 });
