@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +39,9 @@ public class CacheService {
         }
     );
 
+    // Index from simple cache key (method+host+uri) to Vary header value
+    private final Map<CacheKey, String> varyIndex = new ConcurrentHashMap<>();
+
     private static final Pattern MAX_AGE_PATTERN = Pattern.compile("max-age\\s*=\\s*(\\d+)");
     private static final Pattern S_MAXAGE_PATTERN = Pattern.compile("s-maxage\\s*=\\s*(\\d+)");
 
@@ -60,11 +64,15 @@ public class CacheService {
         CachedResponse cachedResponse = cache.get(simpleKey);
 
         if (cachedResponse == null) {
-            // Try with Vary headers if any cached response exists
-            String varyHeader = requestHeaders.getFirst("Vary");
+            // Try with Vary headers if any cached response exists for this resource
+            String varyHeader = varyIndex.get(simpleKey);
             if (varyHeader != null) {
                 CacheKey varyKey = CacheKey.create(method, host, uri, requestHeaders, varyHeader);
                 cachedResponse = cache.get(varyKey);
+                if (cachedResponse == null) {
+                    // Stale index entry
+                    varyIndex.remove(simpleKey);
+                }
             }
         }
 
@@ -77,6 +85,7 @@ public class CacheService {
         if (!cachedResponse.isCacheable()) {
             log.debug("Cache entry not cacheable (no-store or private): {} {}", method, uri);
             cache.remove(simpleKey);
+            varyIndex.remove(simpleKey);
             return null;
         }
 
@@ -114,11 +123,22 @@ public class CacheService {
         // Create cache key (with Vary support)
         String varyHeader = responseHeaders.getFirst("Vary");
         CacheKey key;
-        if (varyHeader != null && !varyHeader.equals("*")) {
+        CacheKey simpleKey = CacheKey.createSimple(method, host, uri);
+
+        if ("*".equals(varyHeader)) {
+            log.debug("Not caching due to Vary: * for {} {}", method, uri);
+            cache.remove(simpleKey);
+            varyIndex.remove(simpleKey);
+            return;
+        }
+
+        if (varyHeader != null && !varyHeader.isBlank()) {
             key = CacheKey.create(method, host, uri, requestHeaders, varyHeader);
+            varyIndex.put(simpleKey, varyHeader);
             log.debug("Caching with Vary: {} {} (Vary: {})", method, uri, varyHeader);
         } else {
-            key = CacheKey.createSimple(method, host, uri);
+            key = simpleKey;
+            varyIndex.remove(simpleKey);
         }
 
         cache.put(key, cachedResponse);
@@ -133,7 +153,12 @@ public class CacheService {
      */
     public void updateAfterRevalidation(HttpMethod method, String host, String uri, HttpHeaders requestHeaders, 
                                        HttpHeaders responseHeaders) {
-        CacheKey key = CacheKey.createSimple(method, host, uri);
+        CacheKey simpleKey = CacheKey.createSimple(method, host, uri);
+        CacheKey key = simpleKey;
+        String varyHeader = varyIndex.get(simpleKey);
+        if (varyHeader != null) {
+            key = CacheKey.create(method, host, uri, requestHeaders, varyHeader);
+        }
         
         CachedResponse cachedResponse = cache.get(key);
         if (cachedResponse != null) {
