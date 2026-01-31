@@ -1,5 +1,7 @@
 package com.marco.reverseproxy.service;
 
+import com.marco.reverseproxy.cache.CacheService;
+import com.marco.reverseproxy.cache.CachedResponse;
 import com.marco.reverseproxy.config.ProxyConfiguration;
 import com.marco.reverseproxy.loadbalancer.LoadBalancer;
 import com.marco.reverseproxy.loadbalancer.LoadBalancerFactory;
@@ -13,6 +15,8 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -30,13 +34,16 @@ public class ProxyService {
     private final ServiceRegistry serviceRegistry;
     private final LoadBalancerFactory loadBalancerFactory;
     private final WebClient webClient;
+    private final CacheService cacheService;
     
     public ProxyService(ServiceRegistry serviceRegistry, 
                        LoadBalancerFactory loadBalancerFactory,
-                       WebClient.Builder webClientBuilder) {
+                       WebClient.Builder webClientBuilder,
+                       CacheService cacheService) {
         this.serviceRegistry = serviceRegistry;
         this.loadBalancerFactory = loadBalancerFactory;
         this.webClient = webClientBuilder.build(); // Reuse single instance for performance
+        this.cacheService = cacheService;
     }
 
     public Mono<ResponseEntity<byte[]>> forwardRequest(
@@ -56,6 +63,19 @@ public class ProxyService {
         if (service == null) {
             log.warn("No service found for domain: {}", hostHeader);
             return Mono.just(ResponseEntity.notFound().build());
+        }
+
+        // Check cache (only for GET/HEAD)
+        HttpMethod method = request.getMethod();
+        String uri = request.getURI().toString();
+        CachedResponse cachedResponse = cacheService.get(method, uri, request.getHeaders());
+        
+        if (cachedResponse != null && cachedResponse.isFresh()) {
+            // Cache hit and fresh - return cached response
+            log.info("Cache HIT (fresh): {} {}", method, uri);
+            return Mono.just(ResponseEntity.status(cachedResponse.getStatusCode())
+                    .headers(cachedResponse.getHeaders())
+                    .body(cachedResponse.getBody()));
         }
 
         // Get healthy hosts
@@ -80,8 +100,8 @@ public class ProxyService {
         String targetUrl = buildTargetUrl(selectedHost, request);
         log.info("Forwarding request to: {}", targetUrl);
 
-        // Forward the request
-        return forwardToDownstream(request, requestBody, targetUrl, service, selectedHost);
+        // Forward the request (pass cachedResponse for validation)
+        return forwardToDownstream(request, requestBody, targetUrl, service, selectedHost, cachedResponse, method, uri);
     }
 
     private String buildTargetUrl(ProxyConfiguration.HostConfig host, ServerHttpRequest request) {
@@ -105,12 +125,26 @@ public class ProxyService {
             String requestBody,
             String targetUrl,
             ProxyConfiguration.ServiceConfig service,
-            ProxyConfiguration.HostConfig host
+            ProxyConfiguration.HostConfig host,
+            CachedResponse cachedResponse,
+            HttpMethod method,
+            String uri
     ) {
         HttpHeaders headers = prepareHeaders(request);
 
-        // Get HTTP method
-        HttpMethod method = request.getMethod();
+        // Add validation headers if cache entry exists but stale
+        if (cachedResponse != null && cachedResponse.hasValidationMetadata()) {
+            if (cachedResponse.getEtag() != null) {
+                headers.set("If-None-Match", cachedResponse.getEtag());
+                log.debug("Added If-None-Match: {}", cachedResponse.getEtag());
+            }
+            if (cachedResponse.getLastModified() != null) {
+                String lastModifiedStr = DateTimeFormatter.RFC_1123_DATE_TIME
+                        .format(cachedResponse.getLastModified().atZone(ZoneId.of("GMT")));
+                headers.set("If-Modified-Since", lastModifiedStr);
+                log.debug("Added If-Modified-Since: {}", lastModifiedStr);
+            }
+        }
 
         // Build the request
         WebClient.RequestBodySpec requestSpec = webClient.method(method)
@@ -138,9 +172,28 @@ public class ProxyService {
                     return Mono.just(ResponseEntity.status(502)
                             .body("Bad Gateway: Downstream service error".getBytes()));
                 })
-                .map(response -> ResponseEntity.status(response.getStatusCode())
-                        .headers(filterResponseHeaders(response.getHeaders()))
-                        .body(response.getBody()));
+                .map(response -> {
+                    // Handle 304 Not Modified
+                    if (response.getStatusCode().value() == 304 && cachedResponse != null) {
+                        log.info("304 Not Modified: {} {} - using cached body", method, uri);
+                        // Update cache metadata
+                        cacheService.updateAfterRevalidation(method, uri, request.getHeaders(), response.getHeaders());
+                        // Return cached body with updated headers
+                        return ResponseEntity.status(200)
+                                .headers(filterResponseHeaders(response.getHeaders()))
+                                .body(cachedResponse.getBody());
+                    }
+                    
+                    // Cache successful response
+                    if (response.getStatusCode().value() == 200 && response.getBody() != null) {
+                        cacheService.put(method, uri, request.getHeaders(), 
+                                response.getStatusCode(), response.getHeaders(), response.getBody());
+                    }
+                    
+                    return ResponseEntity.status(response.getStatusCode())
+                            .headers(filterResponseHeaders(response.getHeaders()))
+                            .body(response.getBody());
+                });
     }
 
     private HttpHeaders prepareHeaders(ServerHttpRequest request) {

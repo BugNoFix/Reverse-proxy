@@ -8,6 +8,7 @@ spring:
 logging:
   level:
     com.marco.reverseproxy: INFO
+    com.marco.reverseproxy.cache: DEBUG  # Enable cache logging
     reactor.netty: WARN
     io.netty: WARN
 
