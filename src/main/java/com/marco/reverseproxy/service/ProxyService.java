@@ -5,6 +5,7 @@ import com.marco.reverseproxy.cache.CachedResponse;
 import com.marco.reverseproxy.config.ProxyConfiguration;
 import com.marco.reverseproxy.loadbalancer.LoadBalancer;
 import com.marco.reverseproxy.loadbalancer.LoadBalancerFactory;
+import com.marco.reverseproxy.util.HostUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -58,17 +59,19 @@ public class ProxyService {
                     .body("Missing Host header".getBytes()));
         }
 
+        String normalizedHost = HostUtils.normalizeHost(hostHeader);
+
         // Find the service configuration based on domain
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain(hostHeader);
+        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain(normalizedHost);
         if (service == null) {
-            log.warn("No service found for domain: {}", hostHeader);
+            log.warn("No service found for domain: {}", normalizedHost);
             return Mono.just(ResponseEntity.notFound().build());
         }
 
         // Check cache (only for GET/HEAD)
         HttpMethod method = request.getMethod();
         String uri = request.getURI().toString();
-        CachedResponse cachedResponse = cacheService.get(method, hostHeader, uri, request.getHeaders());
+        CachedResponse cachedResponse = cacheService.get(method, normalizedHost, uri, request.getHeaders());
         
         if (cachedResponse != null && cachedResponse.isFresh()) {
             // Cache hit and fresh - return cached response
@@ -177,7 +180,7 @@ public class ProxyService {
                     if (response.getStatusCode().value() == 304 && cachedResponse != null) {
                         log.info("304 Not Modified: {} {} - using cached body", method, uri);
                         // Update cache metadata
-                        cacheService.updateAfterRevalidation(method, hostHeader, uri, request.getHeaders(), response.getHeaders());
+                        cacheService.updateAfterRevalidation(method, normalizedHost, uri, request.getHeaders(), response.getHeaders());
 
                         // Merge cached headers with 304 headers (304 can update cache metadata)
                         HttpHeaders mergedHeaders = new HttpHeaders();
@@ -192,7 +195,7 @@ public class ProxyService {
                     
                     // Cache successful response
                     if (response.getStatusCode().value() == 200 && response.getBody() != null) {
-                        cacheService.put(method, hostHeader, uri, request.getHeaders(), 
+                        cacheService.put(method, normalizedHost, uri, request.getHeaders(), 
                                 response.getStatusCode(), response.getHeaders(), response.getBody());
                     }
                     
@@ -245,4 +248,5 @@ public class ProxyService {
     private boolean isHopByHopHeader(String headerName) {
         return HOP_BY_HOP_HEADERS.contains(headerName.toLowerCase());
     }
+
 }

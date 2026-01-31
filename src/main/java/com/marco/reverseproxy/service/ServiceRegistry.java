@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import com.marco.reverseproxy.util.HostUtils;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,7 +40,7 @@ public class ServiceRegistry {
         if (domain == null) {
             return null;
         }
-        return serviceByDomain.get(domain.toLowerCase());
+        return serviceByDomain.get(HostUtils.normalizeHost(domain));
     }
 
     public List<ProxyConfiguration.HostConfig> getHealthyHosts(ProxyConfiguration.ServiceConfig service) {
