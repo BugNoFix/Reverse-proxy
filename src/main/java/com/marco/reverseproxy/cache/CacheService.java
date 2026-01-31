@@ -85,7 +85,14 @@ public class CacheService {
         // Check if cacheable
         if (!cachedResponse.isCacheable()) {
             log.debug("Cache entry not cacheable (no-store or private): {} {}", method, uri);
-            cache.remove(simpleKey);
+
+            CacheKey keyToRemove = simpleKey;
+            String varyHeader = varyIndex.get(simpleKey);
+            if (varyHeader != null) {
+                keyToRemove = CacheKey.create(method, host, uri, requestHeaders, varyHeader);
+            }
+
+            cache.remove(keyToRemove);
             varyIndex.remove(simpleKey);
             return null;
         }
