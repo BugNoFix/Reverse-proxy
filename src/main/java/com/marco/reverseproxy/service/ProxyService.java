@@ -70,7 +70,11 @@ public class ProxyService {
 
         // Check cache (only for GET/HEAD)
         HttpMethod method = request.getMethod();
-        String uri = request.getURI().toString();
+        String uri = request.getPath().value();
+        String query = request.getURI().getRawQuery();
+        if (query != null && !query.isEmpty()) {
+            uri = uri + "?" + query;
+        }
 
         if (isUnsafeMethod(method)) {
             cacheService.invalidateUnsafe(normalizedHost, uri);
@@ -108,7 +112,7 @@ public class ProxyService {
         log.info("Forwarding request to: {}", targetUrl);
 
         // Forward the request (pass cachedResponse for validation)
-        return forwardToDownstream(request, requestBody, targetUrl, service, selectedHost, cachedResponse, method, uri);
+        return forwardToDownstream(request, requestBody, targetUrl, service, selectedHost, cachedResponse, method, uri, normalizedHost);
     }
 
     private String buildTargetUrl(ProxyConfiguration.HostConfig host, ServerHttpRequest request) {
@@ -135,7 +139,8 @@ public class ProxyService {
             ProxyConfiguration.HostConfig host,
             CachedResponse cachedResponse,
             HttpMethod method,
-            String uri
+            String uri,
+            String normalizedHost
     ) {
         HttpHeaders headers = prepareHeaders(request);
 
