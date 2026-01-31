@@ -194,8 +194,10 @@ public class ProxyService {
                         // Merge cached headers with 304 headers (304 can update cache metadata)
                         HttpHeaders mergedHeaders = new HttpHeaders();
                         mergedHeaders.addAll(filterResponseHeaders(cachedResponse.getHeaders()));
-                        mergedHeaders.addAll(filterResponseHeaders(response.getHeaders()));
-
+                        // Override with new headers from 304
+                        filterResponseHeaders(response.getHeaders()).forEach((name, values) -> {
+                            mergedHeaders.put(name, values);
+                        });
                         // Return cached body with merged headers
                         return ResponseEntity.status(200)
                                 .headers(mergedHeaders)
