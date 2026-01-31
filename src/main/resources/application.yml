@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: reverse-proxy
+  profiles:
+    active: local  # Default profile (change to 'prod' for production)
+
+# Logging configuration
+logging:
+  level:
+    com.marco.reverseproxy: INFO
+    reactor.netty: WARN
+    io.netty: WARN
+
+# Server configuration (Netty)
+server:
+  address: 127.0.0.1
+  port: 8080
+  netty:
+    connection-timeout: 5s
+    idle-timeout: 30s
+
+# Common proxy configuration (shared across all profiles)
+proxy:
+  listen:
+    address: "127.0.0.1"
+    port: 8080
