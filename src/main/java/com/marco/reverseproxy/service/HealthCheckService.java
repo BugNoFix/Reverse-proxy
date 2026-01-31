@@ -1,7 +1,6 @@
 package com.marco.reverseproxy.service;
 
 import com.marco.reverseproxy.config.ProxyConfiguration;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,7 +16,6 @@ import java.time.Duration;
 @Slf4j
 @Service
 @EnableScheduling
-@RequiredArgsConstructor
 public class HealthCheckService {
 
     private final ServiceRegistry serviceRegistry;
