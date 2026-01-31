@@ -68,7 +68,7 @@ public class ProxyService {
         // Check cache (only for GET/HEAD)
         HttpMethod method = request.getMethod();
         String uri = request.getURI().toString();
-        CachedResponse cachedResponse = cacheService.get(method, uri, request.getHeaders());
+        CachedResponse cachedResponse = cacheService.get(method, hostHeader, uri, request.getHeaders());
         
         if (cachedResponse != null && cachedResponse.isFresh()) {
             // Cache hit and fresh - return cached response
@@ -177,7 +177,7 @@ public class ProxyService {
                     if (response.getStatusCode().value() == 304 && cachedResponse != null) {
                         log.info("304 Not Modified: {} {} - using cached body", method, uri);
                         // Update cache metadata
-                        cacheService.updateAfterRevalidation(method, uri, request.getHeaders(), response.getHeaders());
+                        cacheService.updateAfterRevalidation(method, hostHeader, uri, request.getHeaders(), response.getHeaders());
                         // Return cached body with updated headers
                         return ResponseEntity.status(200)
                                 .headers(filterResponseHeaders(response.getHeaders()))
@@ -186,7 +186,7 @@ public class ProxyService {
                     
                     // Cache successful response
                     if (response.getStatusCode().value() == 200 && response.getBody() != null) {
-                        cacheService.put(method, uri, request.getHeaders(), 
+                        cacheService.put(method, hostHeader, uri, request.getHeaders(), 
                                 response.getStatusCode(), response.getHeaders(), response.getBody());
                     }
                     

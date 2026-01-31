@@ -49,21 +49,21 @@ public class CacheService {
      * @param requestHeaders Request headers
      * @return Cached response or null if not cached/invalid
      */
-    public CachedResponse get(HttpMethod method, String uri, HttpHeaders requestHeaders) {
+    public CachedResponse get(HttpMethod method, String host, String uri, HttpHeaders requestHeaders) {
         // Only cache GET and HEAD
         if (method != HttpMethod.GET && method != HttpMethod.HEAD) {
             return null;
         }
 
         // Simple lookup first (without Vary)
-        CacheKey simpleKey = CacheKey.createSimple(method, uri);
+        CacheKey simpleKey = CacheKey.createSimple(method, host, uri);
         CachedResponse cachedResponse = cache.get(simpleKey);
 
         if (cachedResponse == null) {
             // Try with Vary headers if any cached response exists
             String varyHeader = requestHeaders.getFirst("Vary");
             if (varyHeader != null) {
-                CacheKey varyKey = CacheKey.create(method, uri, requestHeaders, varyHeader);
+                CacheKey varyKey = CacheKey.create(method, host, uri, requestHeaders, varyHeader);
                 cachedResponse = cache.get(varyKey);
             }
         }
@@ -96,7 +96,7 @@ public class CacheService {
      * @param responseHeaders Response headers
      * @param body Response body
      */
-    public void put(HttpMethod method, String uri, HttpHeaders requestHeaders, 
+    public void put(HttpMethod method, String host, String uri, HttpHeaders requestHeaders, 
                    HttpStatusCode statusCode, HttpHeaders responseHeaders, byte[] body) {
         // Only cache GET and HEAD with 200 OK
         if ((method != HttpMethod.GET && method != HttpMethod.HEAD) || statusCode.value() != 200) {
@@ -115,10 +115,10 @@ public class CacheService {
         String varyHeader = responseHeaders.getFirst("Vary");
         CacheKey key;
         if (varyHeader != null && !varyHeader.equals("*")) {
-            key = CacheKey.create(method, uri, requestHeaders, varyHeader);
+            key = CacheKey.create(method, host, uri, requestHeaders, varyHeader);
             log.debug("Caching with Vary: {} {} (Vary: {})", method, uri, varyHeader);
         } else {
-            key = CacheKey.createSimple(method, uri);
+            key = CacheKey.createSimple(method, host, uri);
         }
 
         cache.put(key, cachedResponse);
@@ -131,9 +131,9 @@ public class CacheService {
     /**
      * Update cached entry after successful 304 revalidation
      */
-    public void updateAfterRevalidation(HttpMethod method, String uri, HttpHeaders requestHeaders, 
+    public void updateAfterRevalidation(HttpMethod method, String host, String uri, HttpHeaders requestHeaders, 
                                        HttpHeaders responseHeaders) {
-        CacheKey key = CacheKey.createSimple(method, uri);
+        CacheKey key = CacheKey.createSimple(method, host, uri);
         
         CachedResponse cachedResponse = cache.get(key);
         if (cachedResponse != null) {

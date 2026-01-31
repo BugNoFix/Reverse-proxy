@@ -18,11 +18,13 @@ import java.util.*;
 public class CacheKey {
     
     private final HttpMethod method;
+    private final String host;
     private final String uri;
     private final Map<String, String> varyHeaders;
 
-    private CacheKey(HttpMethod method, String uri, Map<String, String> varyHeaders) {
+    private CacheKey(HttpMethod method, String host, String uri, Map<String, String> varyHeaders) {
         this.method = method;
+        this.host = host;
         this.uri = uri;
         this.varyHeaders = varyHeaders;
     }
@@ -36,7 +38,7 @@ public class CacheKey {
      * @param varyHeaderValue Value of Vary header from cached response (null if first request)
      * @return Cache key
      */
-    public static CacheKey create(HttpMethod method, String uri, HttpHeaders requestHeaders, String varyHeaderValue) {
+    public static CacheKey create(HttpMethod method, String host, String uri, HttpHeaders requestHeaders, String varyHeaderValue) {
         Map<String, String> varyHeaders = new HashMap<>();
         
         // If cached response has Vary header, include those headers in key
@@ -51,13 +53,13 @@ public class CacheKey {
             }
         }
         
-        return new CacheKey(method, uri, varyHeaders);
+        return new CacheKey(method, host, uri, varyHeaders);
     }
 
     /**
      * Create simple cache key without Vary support (for initial cache lookup)
      */
-    public static CacheKey createSimple(HttpMethod method, String uri) {
-        return new CacheKey(method, uri, Collections.emptyMap());
+    public static CacheKey createSimple(HttpMethod method, String host, String uri) {
+        return new CacheKey(method, host, uri, Collections.emptyMap());
     }
 }
