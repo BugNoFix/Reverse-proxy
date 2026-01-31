@@ -217,9 +217,13 @@ public class ProxyService {
     private HttpHeaders prepareHeaders(ServerHttpRequest request) {
         HttpHeaders headers = new HttpHeaders();
 
+        Set<String> hopByHop = new HashSet<>(HOP_BY_HOP_HEADERS);
+        hopByHop.addAll(parseConnectionHeaderTokens(request.getHeaders()));
+
         // Copy all headers except hop-by-hop headers and Host (backend has its own host)
         request.getHeaders().forEach((headerName, headerValues) -> {
-            if (!isHopByHopHeader(headerName) && !headerName.equalsIgnoreCase("host")) {
+            if (!isHopByHopHeader(headerName) && !headerName.equalsIgnoreCase("host")
+                    && !hopByHop.contains(headerName.toLowerCase())) {
                 headerValues.forEach(headerValue -> {
                     headers.add(headerName, headerValue);
                 });
@@ -246,12 +250,37 @@ public class ProxyService {
 
     private HttpHeaders filterResponseHeaders(HttpHeaders responseHeaders) {
         HttpHeaders filteredHeaders = new HttpHeaders();
+        Set<String> hopByHop = new HashSet<>(HOP_BY_HOP_HEADERS);
+        hopByHop.addAll(parseConnectionHeaderTokens(responseHeaders));
         responseHeaders.forEach((name, values) -> {
-            if (!isHopByHopHeader(name)) {
+            if (!isHopByHopHeader(name) && !hopByHop.contains(name.toLowerCase())) {
                 filteredHeaders.addAll(name, values);
             }
         });
         return filteredHeaders;
+    }
+
+    private Set<String> parseConnectionHeaderTokens(HttpHeaders headers) {
+        Set<String> tokens = new HashSet<>();
+        if (headers == null) {
+            return tokens;
+        }
+
+        List<String> connectionValues = headers.getOrEmpty("Connection");
+        for (String value : connectionValues) {
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            String[] parts = value.split(",");
+            for (String part : parts) {
+                String token = part.trim().toLowerCase();
+                if (!token.isEmpty()) {
+                    tokens.add(token);
+                }
+            }
+        }
+
+        return tokens;
     }
 
     private boolean isHopByHopHeader(String headerName) {
