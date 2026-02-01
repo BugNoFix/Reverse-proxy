@@ -18,7 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * HTTP cache service with LRU eviction and RFC 7234 compliance
+ * HTTP cache service with LRU eviction
  * Supports Cache-Control, ETag, Last-Modified, and Vary headers
  */
 @Slf4j
@@ -176,21 +176,21 @@ public class CacheService {
             // Update cache timestamp and metadata
             cachedResponse.setCachedAt(Instant.now());
                 
-                // Update ETag if provided
-                String etag = responseHeaders.getFirst("ETag");
-                if (etag != null) {
-                    cachedResponse.setEtag(etag);
-                }
-                
-                // Parse new Cache-Control
-                String cacheControl = responseHeaders.getFirst("Cache-Control");
-                if (cacheControl != null) {
-                    parseCacheControlDirectives(cacheControl, cachedResponse);
-                }
-                
-                log.debug("Updated cache after 304: {} {} (new max-age: {}s)", 
-                        method, uri, cachedResponse.getMaxAgeSeconds());
+            // Update ETag if provided
+            String etag = responseHeaders.getFirst("ETag");
+            if (etag != null) {
+                cachedResponse.setEtag(etag);
             }
+
+            // Parse new Cache-Control
+            String cacheControl = responseHeaders.getFirst("Cache-Control");
+            if (cacheControl != null) {
+                parseCacheControlDirectives(cacheControl, cachedResponse);
+            }
+
+            log.debug("Updated cache after 304: {} {} (new max-age: {}s)",
+                    method, uri, cachedResponse.getMaxAgeSeconds());
+        }
     }
 
     /**

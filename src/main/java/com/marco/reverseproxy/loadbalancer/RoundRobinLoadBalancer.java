@@ -38,7 +38,7 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
         );
 
         // Get next index using modulo (thread-safe increment)
-int index = Math.abs(counter.getAndIncrement() % hosts.size());
+        int index = Math.abs(counter.getAndIncrement() % hosts.size());
 
         ProxyConfiguration.HostConfig selectedHost = hosts.get(index);
         

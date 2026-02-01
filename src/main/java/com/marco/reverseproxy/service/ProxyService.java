@@ -182,7 +182,7 @@ public class ProxyService {
                         // Update cache metadata
                         cacheService.updateAfterRevalidation(method, normalizedHost, uri, request.getHeaders(), response.getHeaders());
 
-                        // Merge cached headers with 304 headers (304 can update cache metadata)
+                        // Merge cached headers with 304 headers
                         HttpHeaders mergedHeaders = new HttpHeaders();
                         mergedHeaders.addAll(filterResponseHeaders(cachedResponse.getHeaders()));
                         // Override with new headers from 304
@@ -210,6 +210,8 @@ public class ProxyService {
     private HttpHeaders prepareHeaders(ServerHttpRequest request) {
         HttpHeaders headers = new HttpHeaders();
 
+        // Build complete set of hop-by-hop headers
+        // Includes standard hop-by-hop headers + any specified in Connection header
         Set<String> hopByHop = new HashSet<>(HOP_BY_HOP_HEADERS);
         hopByHop.addAll(parseConnectionHeaderTokens(request.getHeaders()));
 
@@ -253,6 +255,7 @@ public class ProxyService {
         return filteredHeaders;
     }
 
+    // Extracts additional hop-by-hop header names from the Connection header.
     private Set<String> parseConnectionHeaderTokens(HttpHeaders headers) {
         Set<String> tokens = new HashSet<>();
         if (headers == null) {
