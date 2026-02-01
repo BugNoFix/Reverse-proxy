@@ -46,6 +46,28 @@ Per-service load balancing strategies for traffic distribution
 ### 🔧 Header Management
 Automatic management of `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`. Strips standard Hop-by-Hop headers (e.g., `Connection`, `Upgrade`) as well as any custom headers listed in the `Connection` header, ensuring strict RFC compliance.
 
+---
+
+## Architecture
+
+The proxy is built on **Spring WebFlux** and **Project Reactor**, using an event-loop concurrency model powered by **Netty**. 
+
+### Non-Blocking I/O
+Unlike traditional Servlet-based blocking architectures (thread-per-request), this proxy uses a small number of event loop threads to handle high concurrency with low memory footprint.
+- **Event Loop**: Handles incoming requests and outgoing responses asynchronously.
+- **Reactive Streams**: Data processing logic is purely non-blocking, ensuring the main threads represent never blocked by I/O operations (like calling backend services).
+- **Backpressure**: Prevents system overwhelm by controlling the rate of data flow.
+
+## Request Flow
+
+1.  **Incoming Request**: Netty accepts the connection.
+2.  **Routing**: `ServiceRegistry` identifies the target backend service based on the `Host` header.
+3.  **Cache Lookup**: `CacheService` checks for a valid response (Non-blocking access).
+4.  **Load Balancing**: If not cached, `LoadBalancer` selects a specific backend host.
+5.  **Proxying**: `WebClient` forwards the request asynchronously.
+6.  **Response Handling**: The response is streamed back to the client and asynchronously stored in the cache.
+
+---
 
 ## Sequence Diagrams
 
