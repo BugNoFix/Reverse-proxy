@@ -54,9 +54,6 @@ The proxy is built on **Spring WebFlux** and **Project Reactor**, using an event
 
 ### Non-Blocking I/O
 Unlike traditional Servlet-based blocking architectures (thread-per-request), this proxy uses a small number of event loop threads to handle high concurrency with low memory footprint.
-- **Event Loop**: Handles incoming requests and outgoing responses asynchronously.
-- **Reactive Streams**: Data processing logic is purely non-blocking, ensuring the main threads represent never blocked by I/O operations (like calling backend services).
-- **Backpressure**: Prevents system overwhelm by controlling the rate of data flow.
 
 ## Request Flow
 
