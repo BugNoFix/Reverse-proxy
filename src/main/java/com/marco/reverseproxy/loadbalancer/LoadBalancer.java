@@ -10,14 +10,16 @@ import java.util.List;
 public interface LoadBalancer {
     
     /**
-     * Select a host from the available hosts
+     * Select a host from the service configuration
+     * The load balancer is responsible for:
+     * - Extracting hosts from service config
+     * - Validating hosts are available
+     * - Applying selection strategy
      * 
-     * @param hosts List of available hosts
-     * @param serviceConfig Service configuration
+     * @param serviceConfig Service configuration containing hosts
      * @return Selected host or null if no hosts available
      */
     ProxyConfiguration.HostConfig selectHost(
-            List<ProxyConfiguration.HostConfig> hosts, 
             ProxyConfiguration.ServiceConfig serviceConfig
     );
     

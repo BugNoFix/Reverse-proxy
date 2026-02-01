@@ -58,7 +58,7 @@ class ServiceRegistryTest {
 
     @Test
     void getServiceByDomain_shouldReturnServiceForValidDomain() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("api.example.com");
+        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("api.example.com", false);
 
         assertNotNull(service);
         assertEquals("api-service", service.getName());
@@ -67,7 +67,7 @@ class ServiceRegistryTest {
 
     @Test
     void getServiceByDomain_shouldBeCaseInsensitive() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("API.EXAMPLE.COM");
+        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("API.EXAMPLE.COM", true);
 
         assertNotNull(service);
         assertEquals("api-service", service.getName());
@@ -75,7 +75,7 @@ class ServiceRegistryTest {
 
     @Test
     void getServiceByDomain_shouldHandlePortInDomain() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("api.example.com:8080");
+        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("api.example.com:8080", true);
 
         assertNotNull(service);
         assertEquals("api-service", service.getName());
@@ -83,14 +83,14 @@ class ServiceRegistryTest {
 
     @Test
     void getServiceByDomain_shouldReturnNullForUnknownDomain() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("unknown.example.com");
+        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("unknown.example.com", false);
 
         assertNull(service);
     }
 
     @Test
     void getServiceByDomain_shouldReturnNullForNullDomain() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain(null);
+        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain(null, false);
 
         assertNull(service);
     }
@@ -110,16 +110,16 @@ class ServiceRegistryTest {
         
         ServiceRegistry emptyRegistry = new ServiceRegistry(emptyConfig);
         
-        assertNull(emptyRegistry.getServiceByDomain("any.example.com"));
+        assertNull(emptyRegistry.getServiceByDomain("any.example.com", false));
     }
 
     @Test
     void serviceRegistry_shouldHandleMultipleServices() {
-        assertNotNull(serviceRegistry.getServiceByDomain("api.example.com"));
-        assertNotNull(serviceRegistry.getServiceByDomain("web.example.com"));
+        assertNotNull(serviceRegistry.getServiceByDomain("api.example.com", false));
+        assertNotNull(serviceRegistry.getServiceByDomain("web.example.com", false));
         
-        ProxyConfiguration.ServiceConfig service1 = serviceRegistry.getServiceByDomain("api.example.com");
-        ProxyConfiguration.ServiceConfig service2 = serviceRegistry.getServiceByDomain("web.example.com");
+        ProxyConfiguration.ServiceConfig service1 = serviceRegistry.getServiceByDomain("api.example.com", false);
+        ProxyConfiguration.ServiceConfig service2 = serviceRegistry.getServiceByDomain("web.example.com", false);
         
         assertNotEquals(service1, service2);
         assertEquals("api-service", service1.getName());

@@ -84,10 +84,11 @@ class ProxyServiceTest {
         serviceRegistry = spy(new ServiceRegistry(proxyConfiguration));
         
         LoadBalancer mockLoadBalancer = mock(LoadBalancer.class);
-        lenient().when(mockLoadBalancer.selectHost(anyList(), any()))
+        lenient().when(mockLoadBalancer.selectHost(any(ProxyConfiguration.ServiceConfig.class)))
                 .thenAnswer(invocation -> {
-                    List<ProxyConfiguration.HostConfig> hostList = invocation.getArgument(0);
-                    return hostList.isEmpty() ? null : hostList.get(0);
+                    ProxyConfiguration.ServiceConfig svc = invocation.getArgument(0);
+                    List<ProxyConfiguration.HostConfig> hostList = svc.getHosts();
+                    return (hostList == null || hostList.isEmpty()) ? null : hostList.get(0);
                 });
         
         lenient().when(loadBalancerFactory.getLoadBalancer(anyString())).thenReturn(mockLoadBalancer);

@@ -36,10 +36,14 @@ public class ServiceRegistry {
         }
     }
 
-    public ProxyConfiguration.ServiceConfig getServiceByDomain(String domain) {
+    public ProxyConfiguration.ServiceConfig getServiceByDomain(String domain, Boolean normalizeDomain) {
         if (domain == null) {
             return null;
         }
-        return serviceByDomain.get(HostUtils.normalizeHost(domain));
+        if (normalizeDomain) {
+            return serviceByDomain.get(HostUtils.normalizeHost(domain));
+        }
+        return serviceByDomain.get(domain);
+
     }
 }

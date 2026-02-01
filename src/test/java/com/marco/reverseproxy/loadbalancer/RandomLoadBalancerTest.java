@@ -24,15 +24,18 @@ class RandomLoadBalancerTest {
 
     @Test
     void selectHost_shouldReturnNullForEmptyList() {
-        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(
-                Collections.emptyList(), service);
+        service.setHosts(Collections.emptyList());
+        
+        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(service);
 
         assertNull(selected);
     }
 
     @Test
     void selectHost_shouldReturnNullForNullList() {
-        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(null, service);
+        service.setHosts(null);
+        
+        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(service);
 
         assertNull(selected);
     }
@@ -40,9 +43,9 @@ class RandomLoadBalancerTest {
     @Test
     void selectHost_shouldReturnOnlyHostForSingleHost() {
         ProxyConfiguration.HostConfig host1 = createHost("host1", 8080);
-        List<ProxyConfiguration.HostConfig> hosts = Collections.singletonList(host1);
+        service.setHosts(Collections.singletonList(host1));
 
-        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(hosts, service);
+        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(service);
 
         assertEquals(host1, selected);
     }
@@ -53,8 +56,9 @@ class RandomLoadBalancerTest {
         ProxyConfiguration.HostConfig host2 = createHost("host2", 8081);
         ProxyConfiguration.HostConfig host3 = createHost("host3", 8082);
         List<ProxyConfiguration.HostConfig> hosts = Arrays.asList(host1, host2, host3);
+        service.setHosts(hosts);
 
-        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(hosts, service);
+        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(service);
 
         assertNotNull(selected);
         assertTrue(hosts.contains(selected));
@@ -65,13 +69,13 @@ class RandomLoadBalancerTest {
         ProxyConfiguration.HostConfig host1 = createHost("host1", 8080);
         ProxyConfiguration.HostConfig host2 = createHost("host2", 8081);
         ProxyConfiguration.HostConfig host3 = createHost("host3", 8082);
-        List<ProxyConfiguration.HostConfig> hosts = Arrays.asList(host1, host2, host3);
+        service.setHosts(Arrays.asList(host1, host2, host3));
 
         Set<ProxyConfiguration.HostConfig> selectedHosts = new HashSet<>();
         
         // Make many selections to increase probability of hitting all hosts
         for (int i = 0; i < 100; i++) {
-            ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(hosts, service);
+            ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(service);
             selectedHosts.add(selected);
         }
 
@@ -87,12 +91,12 @@ class RandomLoadBalancerTest {
     void selectHost_shouldReturnDifferentHostsOverMultipleCalls() {
         ProxyConfiguration.HostConfig host1 = createHost("host1", 8080);
         ProxyConfiguration.HostConfig host2 = createHost("host2", 8081);
-        List<ProxyConfiguration.HostConfig> hosts = Arrays.asList(host1, host2);
+        service.setHosts(Arrays.asList(host1, host2));
 
         Set<ProxyConfiguration.HostConfig> selectedHosts = new HashSet<>();
         
         for (int i = 0; i < 20; i++) {
-            selectedHosts.add(loadBalancer.selectHost(hosts, service));
+            selectedHosts.add(loadBalancer.selectHost(service));
             if (selectedHosts.size() == 2) {
                 break; // Both hosts have been selected
             }
@@ -108,9 +112,10 @@ class RandomLoadBalancerTest {
         for (int i = 0; i < 10; i++) {
             hosts.add(createHost("host" + i, 8080 + i));
         }
+        service.setHosts(hosts);
 
         for (int i = 0; i < 50; i++) {
-            ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(hosts, service);
+            ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(service);
             assertNotNull(selected);
             assertTrue(hosts.contains(selected));
         }
@@ -127,6 +132,7 @@ class RandomLoadBalancerTest {
         ProxyConfiguration.HostConfig host2 = createHost("host2", 8081);
         ProxyConfiguration.HostConfig host3 = createHost("host3", 8082);
         List<ProxyConfiguration.HostConfig> hosts = Arrays.asList(host1, host2, host3);
+        service.setHosts(hosts);
 
         int threadCount = 10;
         int callsPerThread = 100;
@@ -137,7 +143,7 @@ class RandomLoadBalancerTest {
             threads[i] = new Thread(() -> {
                 try {
                     for (int j = 0; j < callsPerThread; j++) {
-                        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(hosts, service);
+                        ProxyConfiguration.HostConfig selected = loadBalancer.selectHost(service);
                         assertNotNull(selected);
                         assertTrue(hosts.contains(selected));
                     }

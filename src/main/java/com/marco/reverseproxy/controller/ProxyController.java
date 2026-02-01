@@ -45,7 +45,6 @@ public class ProxyController {
                 request.getPath(), 
                 clientIp);
 
-        // Read request body reactively (non-blocking)
         Flux<DataBuffer> body = request.getBody();
         
         return DataBufferUtils.join(body, MAX_BODY_SIZE)
@@ -71,7 +70,7 @@ public class ProxyController {
                     // Handle DataBufferLimitException or message containing "Exceeded" or "exceeded"
                     if (error.getClass().getSimpleName().equals("DataBufferLimitException") ||
                         (error.getMessage() != null && 
-                         (error.getMessage().contains("Exceeded") || error.getMessage().contains("exceeded")))) {
+                         error.getMessage().equalsIgnoreCase("exceeded"))) {
                         log.warn("Request body too large from {}", clientIp);
                         return Mono.just(ResponseEntity.status(413)
                                 .body("Request body too large. Max size: 10MB".getBytes()));

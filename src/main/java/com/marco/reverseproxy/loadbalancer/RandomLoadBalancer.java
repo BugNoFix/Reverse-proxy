@@ -19,9 +19,10 @@ public class RandomLoadBalancer implements LoadBalancer {
 
     @Override
     public ProxyConfiguration.HostConfig selectHost(
-            List<ProxyConfiguration.HostConfig> hosts,
             ProxyConfiguration.ServiceConfig serviceConfig
     ) {
+        List<ProxyConfiguration.HostConfig> hosts = serviceConfig.getHosts();
+        
         if (hosts == null || hosts.isEmpty()) {
             log.warn("No hosts available for service: {}", serviceConfig.getName());
             return null;

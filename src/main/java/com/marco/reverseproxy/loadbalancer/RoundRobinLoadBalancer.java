@@ -22,9 +22,10 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
 
     @Override
     public ProxyConfiguration.HostConfig selectHost(
-            List<ProxyConfiguration.HostConfig> hosts,
             ProxyConfiguration.ServiceConfig service
     ) {
+        List<ProxyConfiguration.HostConfig> hosts = service.getHosts();
+        
         if (hosts == null || hosts.isEmpty()) {
             log.warn("No hosts available for service: {}", service.getName());
             return null;

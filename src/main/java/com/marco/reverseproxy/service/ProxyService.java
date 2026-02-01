@@ -36,11 +36,11 @@ public class ProxyService {
     private final LoadBalancerFactory loadBalancerFactory;
     private final WebClient webClient;
     private final CacheService cacheService;
-    
-    public ProxyService(ServiceRegistry serviceRegistry, 
-                       LoadBalancerFactory loadBalancerFactory,
-                       WebClient.Builder webClientBuilder,
-                       CacheService cacheService) {
+
+    public ProxyService(ServiceRegistry serviceRegistry,
+                        LoadBalancerFactory loadBalancerFactory,
+                        WebClient.Builder webClientBuilder,
+                        CacheService cacheService) {
         this.serviceRegistry = serviceRegistry;
         this.loadBalancerFactory = loadBalancerFactory;
         this.webClient = webClientBuilder.build(); // Reuse single instance for performance
@@ -59,12 +59,12 @@ public class ProxyService {
                     .body("Missing Host header".getBytes()));
         }
 
-        String normalizedHost = HostUtils.normalizeHost(hostHeader);
+        String normalizedHostHeader = HostUtils.normalizeHost(hostHeader);
 
         // Find the service configuration based on domain
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain(normalizedHost);
+        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain(normalizedHostHeader, false);
         if (service == null) {
-            log.warn("No service found for domain: {}", normalizedHost);
+            log.warn("No service found for domain: {}", normalizedHostHeader);
             return Mono.just(ResponseEntity.notFound().build());
         }
 
@@ -77,10 +77,10 @@ public class ProxyService {
         }
 
         if (isUnsafeMethod(method)) {
-            cacheService.invalidateUnsafe(normalizedHost, uri);
+            cacheService.invalidateUnsafe(normalizedHostHeader, uri);
         }
-        CachedResponse cachedResponse = cacheService.get(method, normalizedHost, uri, request.getHeaders());
-        
+        CachedResponse cachedResponse = cacheService.get(method, normalizedHostHeader, uri, request.getHeaders());
+
         if (cachedResponse != null && cachedResponse.isFresh()) {
             // Cache hit and fresh - return cached response
             log.info("Cache HIT (fresh): {} {}", method, uri);
@@ -89,22 +89,14 @@ public class ProxyService {
                     .body(cachedResponse.getBody()));
         }
 
-        // Get all available hosts
-        List<ProxyConfiguration.HostConfig> hosts = service.getHosts();
-        if (hosts == null || hosts.isEmpty()) {
-            log.error("No hosts configured for service: {}", service.getName());
-            return Mono.just(ResponseEntity.status(503)
-                    .body("Service Unavailable: No hosts configured".getBytes()));
-        }
-
         // Select a host using configured load balancer strategy
         LoadBalancer loadBalancer = loadBalancerFactory.getLoadBalancer(service.getStrategy());
-        ProxyConfiguration.HostConfig selectedHost = loadBalancer.selectHost(hosts, service);
+        ProxyConfiguration.HostConfig selectedHost = loadBalancer.selectHost(service);
 
         if (selectedHost == null) {
-            log.error("Load balancer returned null for service: {}", service.getName());
+            log.error("No hosts available for service: {}", service.getName());
             return Mono.just(ResponseEntity.status(503)
-                    .body("Service Unavailable".getBytes()));
+                    .body("Service Unavailable: No hosts configured".getBytes()));
         }
 
         // Build target URL
@@ -112,16 +104,16 @@ public class ProxyService {
         log.info("Forwarding request to: {}", targetUrl);
 
         // Forward the request (pass cachedResponse for validation)
-        return forwardToDownstream(request, requestBody, targetUrl, service, selectedHost, cachedResponse, method, uri, normalizedHost);
+        return forwardToDownstream(request, requestBody, targetUrl, service, selectedHost, cachedResponse, method, uri, normalizedHostHeader);
     }
 
     private String buildTargetUrl(ProxyConfiguration.HostConfig host, ServerHttpRequest request) {
         StringBuilder url = new StringBuilder();
         url.append("http://")
-           .append(host.getAddress())
-           .append(":")
-           .append(host.getPort())
-           .append(request.getPath().value());
+                .append(host.getAddress())
+                .append(":")
+                .append(host.getPort())
+                .append(request.getPath().value());
 
         String queryString = request.getURI().getRawQuery();
         if (queryString != null && !queryString.isEmpty()) {
@@ -165,8 +157,8 @@ public class ProxyService {
 
         // Add body if present
         WebClient.RequestHeadersSpec<?> headersSpec;
-        if (requestBody != null && !requestBody.isEmpty() && 
-            (method == HttpMethod.POST || method == HttpMethod.PUT || method == HttpMethod.PATCH)) {
+        if (requestBody != null && !requestBody.isEmpty() &&
+                (method == HttpMethod.POST || method == HttpMethod.PUT || method == HttpMethod.PATCH)) {
             headersSpec = requestSpec.body(BodyInserters.fromValue(requestBody));
         } else {
             headersSpec = requestSpec;
@@ -175,10 +167,10 @@ public class ProxyService {
         // Execute request and handle response
         return headersSpec.retrieve()
                 .toEntity(byte[].class)
-                .doOnSuccess(response -> log.debug("Successfully forwarded request to {}:{}", 
+                .doOnSuccess(response -> log.debug("Successfully forwarded request to {}:{}",
                         host.getAddress(), host.getPort()))
                 .onErrorResume(error -> {
-                    log.error("Error forwarding request to {}:{} - {}", 
+                    log.error("Error forwarding request to {}:{} - {}",
                             host.getAddress(), host.getPort(), error.getMessage());
                     return Mono.just(ResponseEntity.status(502)
                             .body("Bad Gateway: Downstream service error".getBytes()));
@@ -202,13 +194,13 @@ public class ProxyService {
                                 .headers(mergedHeaders)
                                 .body(cachedResponse.getBody());
                     }
-                    
+
                     // Cache successful response
                     if (response.getStatusCode().value() == 200 && response.getBody() != null) {
-                        cacheService.put(method, normalizedHost, uri, request.getHeaders(), 
+                        cacheService.put(method, normalizedHost, uri, request.getHeaders(),
                                 response.getStatusCode(), response.getHeaders(), response.getBody());
                     }
-                    
+
                     return ResponseEntity.status(response.getStatusCode())
                             .headers(filterResponseHeaders(response.getHeaders()))
                             .body(response.getBody());
@@ -232,9 +224,9 @@ public class ProxyService {
         });
 
         // Add X-Forwarded-For header
-        String clientIp = request.getRemoteAddress() != null 
-            ? request.getRemoteAddress().getAddress().getHostAddress() 
-            : "unknown";
+        String clientIp = request.getRemoteAddress() != null
+                ? request.getRemoteAddress().getAddress().getHostAddress()
+                : "unknown";
         String existingForwardedFor = request.getHeaders().getFirst("X-Forwarded-For");
         if (existingForwardedFor != null) {
             headers.set("X-Forwarded-For", existingForwardedFor + ", " + clientIp);
