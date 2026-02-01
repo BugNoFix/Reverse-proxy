@@ -10,9 +10,9 @@ import java.util.List;
 public interface LoadBalancer {
     
     /**
-     * Select a host from the available healthy hosts
+     * Select a host from the available hosts
      * 
-     * @param hosts List of healthy hosts
+     * @param hosts List of available hosts
      * @param serviceConfig Service configuration
      * @return Selected host or null if no hosts available
      */

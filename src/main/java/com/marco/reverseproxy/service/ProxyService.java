@@ -89,17 +89,17 @@ public class ProxyService {
                     .body(cachedResponse.getBody()));
         }
 
-        // Get healthy hosts
-        List<ProxyConfiguration.HostConfig> healthyHosts = serviceRegistry.getHealthyHosts(service);
-        if (healthyHosts.isEmpty()) {
-            log.error("No healthy hosts available for service: {}", service.getName());
+        // Get all available hosts
+        List<ProxyConfiguration.HostConfig> hosts = service.getHosts();
+        if (hosts == null || hosts.isEmpty()) {
+            log.error("No hosts configured for service: {}", service.getName());
             return Mono.just(ResponseEntity.status(503)
-                    .body("Service Unavailable: No healthy hosts".getBytes()));
+                    .body("Service Unavailable: No hosts configured".getBytes()));
         }
 
         // Select a host using configured load balancer strategy
         LoadBalancer loadBalancer = loadBalancerFactory.getLoadBalancer(service.getStrategy());
-        ProxyConfiguration.HostConfig selectedHost = loadBalancer.selectHost(healthyHosts, service);
+        ProxyConfiguration.HostConfig selectedHost = loadBalancer.selectHost(hosts, service);
 
         if (selectedHost == null) {
             log.error("Load balancer returned null for service: {}", service.getName());
@@ -180,7 +180,6 @@ public class ProxyService {
                 .onErrorResume(error -> {
                     log.error("Error forwarding request to {}:{} - {}", 
                             host.getAddress(), host.getPort(), error.getMessage());
-                    serviceRegistry.markHostUnhealthy(service, host);
                     return Mono.just(ResponseEntity.status(502)
                             .body("Bad Gateway: Downstream service error".getBytes()));
                 })

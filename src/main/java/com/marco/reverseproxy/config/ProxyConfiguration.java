@@ -32,7 +32,5 @@ public class ProxyConfiguration {
     public static class HostConfig {
         private String address;
         private int port;
-        private boolean healthy = true;
-        private long lastHealthCheck = 0;
     }
 }

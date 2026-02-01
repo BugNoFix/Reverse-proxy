@@ -42,24 +42,4 @@ public class ServiceRegistry {
         }
         return serviceByDomain.get(HostUtils.normalizeHost(domain));
     }
-
-    public List<ProxyConfiguration.HostConfig> getHealthyHosts(ProxyConfiguration.ServiceConfig service) {
-        return service.getHosts().stream()
-                .filter(ProxyConfiguration.HostConfig::isHealthy)
-                .collect(Collectors.toList());
-    }
-
-    public void markHostUnhealthy(ProxyConfiguration.ServiceConfig service, ProxyConfiguration.HostConfig host) {
-        host.setHealthy(false);
-        host.setLastHealthCheck(System.currentTimeMillis());
-        log.warn("Marked host {}:{} as unhealthy for service {}", 
-                host.getAddress(), host.getPort(), service.getName());
-    }
-
-    public void markHostHealthy(ProxyConfiguration.ServiceConfig service, ProxyConfiguration.HostConfig host) {
-        host.setHealthy(true);
-        host.setLastHealthCheck(System.currentTimeMillis());
-        log.info("Marked host {}:{} as healthy for service {}", 
-                host.getAddress(), host.getPort(), service.getName());
-    }
 }

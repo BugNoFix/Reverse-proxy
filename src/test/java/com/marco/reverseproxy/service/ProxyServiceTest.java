@@ -73,7 +73,6 @@ class ProxyServiceTest {
         ProxyConfiguration.HostConfig host = new ProxyConfiguration.HostConfig();
         host.setAddress("localhost");
         host.setPort(9090);
-        host.setHealthy(true);
         hosts.add(host);
         
         service.setHosts(hosts);
@@ -227,23 +226,6 @@ class ProxyServiceTest {
     }
 
     @Test
-    void forwardRequest_shouldReturnServiceUnavailableWhenNoHealthyHosts() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry
-                .getServiceByDomain("test.example.com");
-        serviceRegistry.markHostUnhealthy(service, service.getHosts().get(0));
-
-        ServerHttpRequest request = MockServerHttpRequest
-                .get("/api/test")
-                .header("Host", "test.example.com")
-                .build();
-
-        ResponseEntity<byte[]> response = proxyService.forwardRequest(request, "").block();
-
-        assertNotNull(response);
-        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
-    }
-
-    @Test
     void forwardRequest_shouldCacheGetResponse() {
         HttpHeaders responseHeaders = new HttpHeaders();
         responseHeaders.add("Cache-Control", "public, max-age=60");
@@ -363,10 +345,6 @@ class ProxyServiceTest {
 
         assertNotNull(response);
         assertEquals(HttpStatus.BAD_GATEWAY, response.getStatusCode());
-        
-        ProxyConfiguration.ServiceConfig service = serviceRegistry
-                .getServiceByDomain("test.example.com");
-        verify(serviceRegistry).markHostUnhealthy(eq(service), any());
     }
 
     @Test

@@ -9,7 +9,7 @@ import java.util.Random;
 
 /**
  * Random load balancing strategy
- * Selects a random host from the available healthy hosts
+ * Selects a random host from the available hosts
  */
 @Slf4j
 @Component
@@ -23,7 +23,7 @@ public class RandomLoadBalancer implements LoadBalancer {
             ProxyConfiguration.ServiceConfig serviceConfig
     ) {
         if (hosts == null || hosts.isEmpty()) {
-            log.warn("No healthy hosts available for service: {}", serviceConfig.getName());
+            log.warn("No hosts available for service: {}", serviceConfig.getName());
             return null;
         }
 

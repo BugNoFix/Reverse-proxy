@@ -32,8 +32,8 @@ class ServiceRegistryTest {
         service1.setStrategy("round-robin");
         
         List<ProxyConfiguration.HostConfig> hosts1 = new ArrayList<>();
-        hosts1.add(createHost("localhost", 9090, true));
-        hosts1.add(createHost("localhost", 9091, true));
+        hosts1.add(createHost("localhost", 9090));
+        hosts1.add(createHost("localhost", 9091));
         service1.setHosts(hosts1);
         
         services.add(service1);
@@ -45,8 +45,8 @@ class ServiceRegistryTest {
         service2.setStrategy("random");
         
         List<ProxyConfiguration.HostConfig> hosts2 = new ArrayList<>();
-        hosts2.add(createHost("localhost", 9092, true));
-        hosts2.add(createHost("localhost", 9093, false)); // Unhealthy
+        hosts2.add(createHost("localhost", 9092));
+        hosts2.add(createHost("localhost", 9093));
         service2.setHosts(hosts2);
         
         services.add(service2);
@@ -96,73 +96,6 @@ class ServiceRegistryTest {
     }
 
     @Test
-    void getHealthyHosts_shouldReturnOnlyHealthyHosts() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("web.example.com");
-        List<ProxyConfiguration.HostConfig> healthyHosts = serviceRegistry.getHealthyHosts(service);
-
-        assertEquals(1, healthyHosts.size());
-        assertEquals(9092, healthyHosts.get(0).getPort());
-    }
-
-    @Test
-    void getHealthyHosts_shouldReturnAllHealthyHosts() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("api.example.com");
-        List<ProxyConfiguration.HostConfig> healthyHosts = serviceRegistry.getHealthyHosts(service);
-
-        assertEquals(2, healthyHosts.size());
-    }
-
-    @Test
-    void markHostUnhealthy_shouldUpdateHostStatus() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("api.example.com");
-        ProxyConfiguration.HostConfig host = service.getHosts().get(0);
-        
-        assertTrue(host.isHealthy());
-        
-        serviceRegistry.markHostUnhealthy(service, host);
-        
-        assertFalse(host.isHealthy());
-        assertTrue(host.getLastHealthCheck() > 0);
-    }
-
-    @Test
-    void markHostHealthy_shouldUpdateHostStatus() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("web.example.com");
-        ProxyConfiguration.HostConfig host = service.getHosts().get(1); // Unhealthy host
-        
-        assertFalse(host.isHealthy());
-        
-        serviceRegistry.markHostHealthy(service, host);
-        
-        assertTrue(host.isHealthy());
-        assertTrue(host.getLastHealthCheck() > 0);
-    }
-
-    @Test
-    void markHostUnhealthy_shouldUpdateHealthyHostsList() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("api.example.com");
-        ProxyConfiguration.HostConfig host = service.getHosts().get(0);
-        
-        assertEquals(2, serviceRegistry.getHealthyHosts(service).size());
-        
-        serviceRegistry.markHostUnhealthy(service, host);
-        
-        assertEquals(1, serviceRegistry.getHealthyHosts(service).size());
-    }
-
-    @Test
-    void markHostHealthy_shouldUpdateHealthyHostsList() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("web.example.com");
-        ProxyConfiguration.HostConfig host = service.getHosts().get(1); // Unhealthy host
-        
-        assertEquals(1, serviceRegistry.getHealthyHosts(service).size());
-        
-        serviceRegistry.markHostHealthy(service, host);
-        
-        assertEquals(2, serviceRegistry.getHealthyHosts(service).size());
-    }
-
-    @Test
     void getProxyConfiguration_shouldReturnConfiguration() {
         ProxyConfiguration config = serviceRegistry.getProxyConfiguration();
 
@@ -181,18 +114,6 @@ class ServiceRegistryTest {
     }
 
     @Test
-    void getHealthyHosts_shouldReturnEmptyListWhenAllUnhealthy() {
-        ProxyConfiguration.ServiceConfig service = serviceRegistry.getServiceByDomain("api.example.com");
-        
-        // Mark all hosts as unhealthy
-        service.getHosts().forEach(host -> serviceRegistry.markHostUnhealthy(service, host));
-        
-        List<ProxyConfiguration.HostConfig> healthyHosts = serviceRegistry.getHealthyHosts(service);
-        
-        assertTrue(healthyHosts.isEmpty());
-    }
-
-    @Test
     void serviceRegistry_shouldHandleMultipleServices() {
         assertNotNull(serviceRegistry.getServiceByDomain("api.example.com"));
         assertNotNull(serviceRegistry.getServiceByDomain("web.example.com"));
@@ -205,11 +126,10 @@ class ServiceRegistryTest {
         assertEquals("web-service", service2.getName());
     }
 
-    private ProxyConfiguration.HostConfig createHost(String address, int port, boolean healthy) {
+    private ProxyConfiguration.HostConfig createHost(String address, int port) {
         ProxyConfiguration.HostConfig host = new ProxyConfiguration.HostConfig();
         host.setAddress(address);
         host.setPort(port);
-        host.setHealthy(healthy);
         return host;
     }
 }

@@ -22,11 +22,11 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
 
     @Override
     public ProxyConfiguration.HostConfig selectHost(
-            List<ProxyConfiguration.HostConfig> healthyHosts,
+            List<ProxyConfiguration.HostConfig> hosts,
             ProxyConfiguration.ServiceConfig service
     ) {
-        if (healthyHosts == null || healthyHosts.isEmpty()) {
-            log.warn("No healthy hosts available for service: {}", service.getName());
+        if (hosts == null || hosts.isEmpty()) {
+            log.warn("No hosts available for service: {}", service.getName());
             return null;
         }
 
@@ -37,9 +37,9 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
         );
 
         // Get next index using modulo (thread-safe increment)
-        int index = Math.abs(counter.getAndIncrement() % healthyHosts.size());
-        
-        ProxyConfiguration.HostConfig selectedHost = healthyHosts.get(index);
+int index = Math.abs(counter.getAndIncrement() % hosts.size());
+
+        ProxyConfiguration.HostConfig selectedHost = hosts.get(index);
         
         log.debug("Round-robin selected {}:{} for service {} (index: {})", 
                 selectedHost.getAddress(), 

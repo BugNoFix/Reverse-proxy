@@ -127,7 +127,6 @@ class RoundRobinLoadBalancerTest {
         ProxyConfiguration.HostConfig host = new ProxyConfiguration.HostConfig();
         host.setAddress(address);
         host.setPort(port);
-        host.setHealthy(true);
         return host;
     }
 }
