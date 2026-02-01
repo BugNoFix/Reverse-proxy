@@ -8,16 +8,14 @@ A production-ready, reactive (non-blocking) HTTP reverse proxy built with Spring
 
 ## Table of Contents
 1. [Overview](#overview)
-2. [Key Features](#key-features)
-3. [Architecture](#architecture)
-4. [Request Flow](#request-flow)
-5. [Sequence Diagrams](#sequence-diagrams)
-6. [Getting Started](#getting-started)
-7. [Configuration](#configuration)
-8. [Load Balancing](#load-balancing)
-9. [Caching](#caching)
-10. [API / Behavior Reference](#api--behavior-reference)
-12. [Testing](#testing)
+2. [Architectural Design](#architectural-design)
+3. [Request Flow](#request-flow)
+4. [Sequence Diagrams](#sequence-diagrams)
+5. [Getting Started](#getting-started)
+6. [Configuration](#configuration)
+7. [Load Balancing](#load-balancing)
+8. [Caching](#caching)
+9. [Testing](#testing)
 
 ---
 
@@ -35,25 +33,16 @@ This service acts as a **high-performance reverse proxy** that receives inbound 
 
 ---
 
-## Key Features
+## Architectural Design
+
+The system is architected as a high-throughput **Reactive Reverse Proxy**, leveraging the **Reactor** pattern to handle I/O operations asynchronously.
+
+*   **⚡ Non-Blocking Event Loop**: Built on **Netty** and **Spring WebFlux**, the proxy uses a fixed number of event loop threads rather than a "thread-per-request" model. This architecture minimizes context switching and memory overhead, enabling the handling of thousands of concurrent connections.
+*   **⚖️ Pluggable Load Balancing Strategy**: Routing logic implements the *Strategy Pattern* via the `LoadBalancer` interface. This decoupling allows distinct algorithms (e.g., Round-Robin, Random) to be applied per-service in `application.yml` without code changes.
+*   **💾 RFC-Compliant Caching Layer**: The caching subsystem acts as a transparent shared cache (RFC 7234). It uses `ConcurrentLinkedHashMap` for thread-safety and implements complex validation logic (handling `ETag`, `Last-Modified`) and response variations via the `Vary` header, strictly adhering to HTTP standards.
+*   **🔧 Protocol Compliance Engine**: A dedicated filter chain enforces strict HTTP compliance. It manages `X-Forwarded-*` headers for client traceability and proactively validates and strips Hop-by-Hop headers (e.g., `Connection`, `Te`) to ensure protocol integrity and prevent ambiguity.
 
 
-### ⚖️ Load Balancing
-Per-service load balancing strategies for traffic distribution
-
-###  HTTP Caching
-
-### 🔧 Header Management
-Automatic management of `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`. Strips standard Hop-by-Hop headers (e.g., `Connection`, `Upgrade`) as well as any custom headers listed in the `Connection` header, ensuring strict RFC compliance.
-
----
-
-## Architecture
-
-The proxy is built on **Spring WebFlux** and **Project Reactor**, using an event-loop concurrency model powered by **Netty**. 
-
-### Non-Blocking I/O
-Unlike traditional Servlet-based blocking architectures (thread-per-request), this proxy uses a small number of event loop threads to handle high concurrency with low memory footprint.
 
 ## Request Flow
 
