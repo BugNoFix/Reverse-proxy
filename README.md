@@ -11,18 +11,16 @@ A production-ready, reactive (non-blocking) HTTP reverse proxy built with Spring
 2. [Architectural Design](#architectural-design)
 3. [Request Flow](#request-flow)
 4. [Sequence Diagrams](#sequence-diagrams)
-5. [Getting Started](#getting-started)
-6. [Configuration](#configuration)
-7. [Load Balancing](#load-balancing)
-8. [Caching](#caching)
-9. [Testing](#testing)
+5. [Configuration](#configuration)
+6. [Load Balancing](#load-balancing)
+7. [Caching](#caching)
+8. [Testing](#testing)
 
 ---
 
 ## Overview
 
 This service acts as a **high-performance reverse proxy** that receives inbound HTTP requests and intelligently routes them to downstream services based on the request's `Host` header. It leverages Spring WebFlux's reactive architecture to handle thousands of concurrent connections with minimal resource overhead.
-
 
 **Tech Stack**
 - **Java 17** - Modern LTS version with performance improvements
@@ -37,10 +35,10 @@ This service acts as a **high-performance reverse proxy** that receives inbound 
 
 The system is architected as a high-throughput **Reactive Reverse Proxy**, leveraging the **Reactor** pattern to handle I/O operations asynchronously.
 
-*   **⚡ Non-Blocking Event Loop**: Built on **Netty** and **Spring WebFlux**, the proxy uses a fixed number of event loop threads rather than a "thread-per-request" model. This architecture minimizes context switching and memory overhead, enabling the handling of thousands of concurrent connections.
-*   **⚖️ Pluggable Load Balancing Strategy**: Routing logic implements the *Strategy Pattern* via the `LoadBalancer` interface. This decoupling allows distinct algorithms (e.g., Round-Robin, Random) to be applied per-service in `application.yml` without code changes.
-*   **💾 RFC-Compliant Caching Layer**: The caching subsystem acts as a transparent shared cache (RFC 7234). It uses `ConcurrentLinkedHashMap` for thread-safety and implements complex validation logic (handling `ETag`, `Last-Modified`) and response variations via the `Vary` header, strictly adhering to HTTP standards.
-*   **🔧 Protocol Compliance Engine**: A dedicated filter chain enforces strict HTTP compliance. It manages `X-Forwarded-*` headers for client traceability and proactively validates and strips Hop-by-Hop headers (e.g., `Connection`, `Te`) to ensure protocol integrity and prevent ambiguity.
+- **⚡ Non-Blocking Event Loop**: Built on **Netty** and **Spring WebFlux**, the proxy uses a fixed number of event loop threads rather than a "thread-per-request" model. This architecture minimizes context switching and memory overhead, enabling the handling of thousands of concurrent connections.
+- **⚖️ Pluggable Load Balancing Strategy**: Routing logic implements the *Strategy Pattern* via the `LoadBalancer` interface. This decoupling allows distinct algorithms (e.g., Round-Robin, Random) to be applied per-service in `application.yml` without code changes.
+- **💾 RFC-Compliant Caching Layer**: The caching subsystem acts as a transparent shared cache (RFC 7234). It implements validation logic using `ETag` / `Last-Modified`, supports `Vary`, and injects the standard `Age` header on cache-served responses.
+- **🔧 Protocol Compliance Engine**: A dedicated filter chain enforces strict HTTP compliance. It manages `X-Forwarded-*` headers for client traceability and strips Hop-by-Hop headers (e.g., `Connection`, `Te`) to avoid protocol ambiguity.
 
 
 
@@ -61,26 +59,62 @@ These diagrams illustrate the detailed interactions between components for commo
 
 ### 1. Cache MISS (First Request)
 The proxy forwards the request and stores the response.
-![](img/sequence1.svg)
+![Cache MISS sequence diagram](img/sequence1.svg)
 
 
 ### 2. Cache HIT (Fresh)
 The cached resource is within `max-age`. No backend contact needed.
-![](img/sequence2.svg)
+![Cache HIT (fresh) sequence diagram](img/sequence2.svg)
 
 
 ### 3. Cache Revalidation - Not Modified (304)
 Resource is stale (`Age > max-age`) but has validators (`ETag`). Backend confirms it's unchanged.
-![](img/sequence3.svg)
+![Cache revalidation (304 Not Modified) sequence diagram](img/sequence3.svg)
 
 ### 4. Cache Revalidation - Modified (200)
 Resource is stale and HAS changed on the backend.
-![](img/sequence4.svg)
+![Cache revalidation (200 Modified) sequence diagram](img/sequence4.svg)
 
 
 ### 5. Stale Cache without Validators
 Resource is stale but has NO `ETag` or `Last-Modified`. Must re-download fully.
-![](img/sequence5.svg)
+![Stale cache without validators sequence diagram](img/sequence5.svg)
+
+## Configuration
+
+Configuration is split into a **baseline** file plus **profile-specific** overrides.
+
+### Files
+
+- `src/main/resources/application.yml`: shared defaults (server bind, logging, common proxy settings).
+- `src/main/resources/application-local.yml`: local environment values (typically `proxy.services` pointing to `127.0.0.1`).
+- `src/main/resources/application-prod.yml`: production environment values (typically `proxy.services` pointing to private IPs / hostnames).
+
+### Profiles (how the right file is chosen)
+
+Spring Boot always loads `application.yml` first, then overlays the active profile file (e.g. `application-local.yml`).
+
+Example (shared baseline in `application.yml`):
+
+```yaml
+proxy:
+  listen:
+    address: "127.0.0.1"
+    port: 8080
+```
+
+Example (local backends in `application-local.yml`):
+
+```yaml
+proxy:
+  services:
+    - name: my-service
+      domain: my-service.my-company.com
+      strategy: round-robin
+      hosts:
+        - address: "127.0.0.1"
+          port: 9090
+```
 
 ---
 
@@ -94,16 +128,17 @@ Distributes requests sequentially across all hosts in a circular order. Ideal fo
 #### Random
 Selects a random host for each request. Good for simple load distribution without state maintenance.
 
+---
 
 ## Caching
 
 Implements RFC 7234 compliant HTTP caching.
 
 ### Supported Features
-*   **Validation**: Conditional requests using `ETag` and `Last-Modified`.
-*   **Directives**: Support for `Cache-Control` directives (`public`, `private`, `no-cache`, `no-store`, `max-age`, `s-maxage`).
-*   **Vary Support**: Caches different responses based on `Vary` headers.
-*   **Eviction**: Thread-safe LRU eviction policy.
+- **Validation**: Conditional requests using `ETag` and `Last-Modified`.
+- **Directives**: Support for `Cache-Control` directives (`public`, `private`, `no-cache`, `no-store`, `max-age`, `s-maxage`).
+- **Vary Support**: Caches different responses based on `Vary` headers.
+- **Eviction**: Thread-safe LRU eviction policy.
 
 ### Cache Architecture
 
@@ -131,3 +166,14 @@ CacheKey = {
   varyHeaders: Map       // Headers specified in Vary
 }
 ```
+
+---
+
+## Testing
+
+- Run unit tests: `./mvnw test`
+- Full clean + test: `./mvnw clean test`
+- (Optional) Start mock backends: `./start-mock-servers.sh`
+- (Optional) Stop mock backends: `./stop-mock-servers.sh`
+- (Optional) Run end-to-end checks: `./test-proxy.sh`
+
