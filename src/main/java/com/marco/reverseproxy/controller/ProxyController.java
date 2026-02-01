@@ -68,7 +68,10 @@ public class ProxyController {
                     }
                 })
                 .onErrorResume(error -> {
-                    if (error.getMessage() != null && error.getMessage().contains("exceeded")) {
+                    // Handle DataBufferLimitException or message containing "Exceeded" or "exceeded"
+                    if (error.getClass().getSimpleName().equals("DataBufferLimitException") ||
+                        (error.getMessage() != null && 
+                         (error.getMessage().contains("Exceeded") || error.getMessage().contains("exceeded")))) {
                         log.warn("Request body too large from {}", clientIp);
                         return Mono.just(ResponseEntity.status(413)
                                 .body("Request body too large. Max size: 10MB".getBytes()));
