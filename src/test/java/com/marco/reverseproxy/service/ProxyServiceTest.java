@@ -328,7 +328,7 @@ class ProxyServiceTest {
     }
 
     @Test
-    void forwardRequest_shouldMarkHostUnhealthyOnConnectionError() {
+    void forwardRequest_shouldReturnBadGatewayOnConnectionError() {
         when(webClient.method(any(HttpMethod.class))).thenReturn(requestBodyUriSpec);
         when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
         when(requestBodySpec.headers(any())).thenReturn(requestBodySpec);
