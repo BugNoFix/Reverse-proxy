@@ -44,7 +44,7 @@ Per-service load balancing strategies for traffic distribution
 ###  HTTP Caching
 
 ### 🔧 Header Management
-tipo x forward remove hop by hop ip
+Automatic management of `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`. Strips standard Hop-by-Hop headers (e.g., `Connection`, `Upgrade`) as well as any custom headers listed in the `Connection` header, ensuring strict RFC compliance.
 
 
 ## Sequence Diagrams
@@ -80,8 +80,22 @@ Resource is stale but has NO `ETag` or `Last-Modified`. Must re-download fully.
 
 ### Available Strategies
 
+#### Round-Robin
+Distributes requests sequentially across all hosts in a circular order. Ideal for stateless services with even capacity.
+
+#### Random
+Selects a random host for each request. Good for simple load distribution without state maintenance.
+
 
 ## Caching
+
+Implements RFC 7234 compliant HTTP caching.
+
+### Supported Features
+*   **Validation**: Conditional requests using `ETag` and `Last-Modified`.
+*   **Directives**: Support for `Cache-Control` directives (`public`, `private`, `no-cache`, `no-store`, `max-age`, `s-maxage`).
+*   **Vary Support**: Caches different responses based on `Vary` headers.
+*   **Eviction**: Thread-safe LRU eviction policy.
 
 ### Cache Architecture
 
