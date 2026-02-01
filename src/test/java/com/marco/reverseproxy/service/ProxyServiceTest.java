@@ -18,13 +18,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -101,7 +101,7 @@ class ProxyServiceTest {
     }
 
     @Test
-    void forwardRequest_shouldReturnBadRequestForMissingHost() {
+    void forwardRequest_shouldReturnBadRequestForMissingHostHeader() {
         ServerHttpRequest request = MockServerHttpRequest
                 .get("/api/test")
                 .build();
@@ -168,15 +168,22 @@ class ProxyServiceTest {
         when(responseSpec.toEntity(byte[].class)).thenReturn(Mono.just(mockResponse));
 
         ServerHttpRequest request = MockServerHttpRequest
-                .get("/api/test")
+                .get("http://test.example.com/api/test")
                 .header("Host", "test.example.com")
                 .remoteAddress(new InetSocketAddress("192.168.1.100", 12345))
                 .build();
 
         proxyService.forwardRequest(request, "").block();
 
-        ArgumentCaptor<HttpHeaders> headersCaptor = ArgumentCaptor.forClass(HttpHeaders.class);
-        verify(requestBodySpec).headers(any());
+        ArgumentCaptor<Consumer<HttpHeaders>> headersCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(requestBodySpec).headers(headersCaptor.capture());
+
+        HttpHeaders forwarded = new HttpHeaders();
+        headersCaptor.getValue().accept(forwarded);
+
+        assertEquals("192.168.1.100", forwarded.getFirst("X-Forwarded-For"));
+        assertEquals("http", forwarded.getFirst("X-Forwarded-Proto"));
+        assertEquals("test.example.com", forwarded.getFirst("X-Forwarded-Host"));
     }
 
     @Test
@@ -414,7 +421,16 @@ class ProxyServiceTest {
 
         proxyService.forwardRequest(request, "").block();
 
-        // Verify request was made
-        verify(webClient).method(HttpMethod.GET);
+        ArgumentCaptor<Consumer<HttpHeaders>> headersCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(requestBodySpec).headers(headersCaptor.capture());
+
+        HttpHeaders forwarded = new HttpHeaders();
+        headersCaptor.getValue().accept(forwarded);
+
+        assertNull(forwarded.getFirst("Connection"));
+        assertNull(forwarded.getFirst("Keep-Alive"));
+        assertNull(forwarded.getFirst("Transfer-Encoding"));
+        assertNull(forwarded.getFirst("Host"));
+        assertEquals("value", forwarded.getFirst("X-Custom-Header"));
     }
 }

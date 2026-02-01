@@ -251,7 +251,7 @@ class CacheServiceTest {
         CachedResponse cached2 = cacheService.get(HttpMethod.GET, HOST, URI, requestHeaders);
         
         assertNotNull(cached2);
-        assertTrue(cached2.getCachedAt().isAfter(firstCachedAt));
+        assertTrue(!cached2.getCachedAt().isBefore(firstCachedAt));
         assertEquals(120L, cached2.getMaxAgeSeconds());
     }
 

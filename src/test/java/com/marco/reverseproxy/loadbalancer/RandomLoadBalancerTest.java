@@ -4,6 +4,7 @@ import com.marco.reverseproxy.config.ProxyConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -16,6 +17,7 @@ class RandomLoadBalancerTest {
     @BeforeEach
     void setUp() {
         loadBalancer = new RandomLoadBalancer();
+        setRandomSeed(loadBalancer, 0L);
         
         service = new ProxyConfiguration.ServiceConfig();
         service.setName("test-service");
@@ -80,7 +82,7 @@ class RandomLoadBalancerTest {
         }
 
         // With random selection over 100 iterations, we should hit all hosts
-        // (probability of missing a host is extremely low)
+        // (deterministic seed ensures coverage)
         assertEquals(3, selectedHosts.size());
         assertTrue(selectedHosts.contains(host1));
         assertTrue(selectedHosts.contains(host2));
@@ -166,5 +168,16 @@ class RandomLoadBalancerTest {
         host.setAddress(address);
         host.setPort(port);
         return host;
+    }
+
+    private void setRandomSeed(RandomLoadBalancer target, long seed) {
+        try {
+            Field randomField = RandomLoadBalancer.class.getDeclaredField("random");
+            randomField.setAccessible(true);
+            Random seeded = new Random(seed);
+            randomField.set(target, seeded);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to set Random seed for test", e);
+        }
     }
 }
