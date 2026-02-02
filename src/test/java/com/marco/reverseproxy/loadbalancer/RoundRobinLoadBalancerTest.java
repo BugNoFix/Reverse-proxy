@@ -8,7 +8,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class RoundRobinLoadBalancerTest {
 
@@ -86,13 +87,14 @@ class RoundRobinLoadBalancerTest {
         // Service 1
         assertEquals(host1, loadBalancer.selectHost(service));
         assertEquals(host2, loadBalancer.selectHost(service));
+        assertEquals(host1, loadBalancer.selectHost(service));
 
         // Service 2 should have its own counter
         assertEquals(host1, loadBalancer.selectHost(service2));
         assertEquals(host2, loadBalancer.selectHost(service2));
 
         // Service 1 continues
-        assertEquals(host1, loadBalancer.selectHost(service));
+        assertEquals(host2, loadBalancer.selectHost(service));
     }
 
     @Test

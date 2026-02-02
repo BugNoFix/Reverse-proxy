@@ -26,9 +26,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ProxyServiceTest {
@@ -229,8 +241,8 @@ class ProxyServiceTest {
 
         proxyService.forwardRequest(request, "").block();
 
-        verify(cacheService).put(eq(HttpMethod.GET), eq("test.example.com"), 
-                               eq("/api/cached"), any(HttpHeaders.class), 
+        verify(cacheService).put(eq(HttpMethod.GET), eq("test.example.com"),
+                               eq("/api/cached"), any(HttpHeaders.class),
                                eq(HttpStatus.OK), any(HttpHeaders.class), any(byte[].class));
     }
 
@@ -245,7 +257,7 @@ class ProxyServiceTest {
                 .isPublic(true)
                 .build();
 
-        when(cacheService.get(eq(HttpMethod.GET), eq("test.example.com"), 
+        when(cacheService.get(eq(HttpMethod.GET), eq("test.example.com"),
                             eq("/api/cached"), any(HttpHeaders.class)))
                 .thenReturn(cachedResponse);
 
@@ -342,7 +354,7 @@ class ProxyServiceTest {
                 .isPublic(true)
                 .build();
 
-        when(cacheService.get(eq(HttpMethod.GET), eq("test.example.com"), 
+        when(cacheService.get(eq(HttpMethod.GET), eq("test.example.com"),
                             eq("/api/cached"), any(HttpHeaders.class)))
                 .thenReturn(cachedResponse);
 
@@ -368,8 +380,8 @@ class ProxyServiceTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertArrayEquals("{\"cached\": true}".getBytes(), response.getBody());
         
-        verify(cacheService).updateAfterRevalidation(eq(HttpMethod.GET), 
-                eq("test.example.com"), eq("/api/cached"), 
+        verify(cacheService).updateAfterRevalidation(eq(HttpMethod.GET),
+                eq("test.example.com"), eq("/api/cached"),
                 any(HttpHeaders.class), any(HttpHeaders.class));
     }
 

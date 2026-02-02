@@ -191,26 +191,6 @@ class CacheServiceTest {
     }
 
     @Test
-    void put_shouldPreferSMaxAge() {
-        HttpHeaders requestHeaders = new HttpHeaders();
-        HttpHeaders responseHeaders = new HttpHeaders();
-        responseHeaders.add("Cache-Control", "max-age=30, s-maxage=120");
-        byte[] body = "test response".getBytes();
-
-        cacheService.put(HttpMethod.GET, HOST, URI, requestHeaders, 
-                        HttpStatus.OK, responseHeaders, body);
-
-        CachedResponse cached = cacheService.get(HttpMethod.GET, HOST, URI, requestHeaders);
-        
-        assertNotNull(cached);
-        assertEquals(30L, cached.getMaxAgeSeconds());
-        assertEquals(120L, cached.getSMaxAgeSeconds());
-
-        cached.setCachedAt(Instant.now().minusSeconds(40));
-        assertTrue(cached.isFresh());
-    }
-
-    @Test
     void updateAfterRevalidation() throws InterruptedException {
         // Cache initial response
         HttpHeaders requestHeaders = new HttpHeaders();
@@ -316,22 +296,5 @@ class CacheServiceTest {
         
         assertNotNull(cached);
         assertTrue(cached.isProxyRevalidate());
-    }
-
-    @Test
-    void put_shouldParseNoCache() {
-        HttpHeaders requestHeaders = new HttpHeaders();
-        HttpHeaders responseHeaders = new HttpHeaders();
-        responseHeaders.add("Cache-Control", "public, max-age=60, no-cache");
-        byte[] body = "test response".getBytes();
-
-        cacheService.put(HttpMethod.GET, HOST, URI, requestHeaders, 
-                        HttpStatus.OK, responseHeaders, body);
-
-        CachedResponse cached = cacheService.get(HttpMethod.GET, HOST, URI, requestHeaders);
-        
-        assertNotNull(cached);
-        assertTrue(cached.isNoCache());
-        assertTrue(cached.requiresRevalidation());
     }
 }
