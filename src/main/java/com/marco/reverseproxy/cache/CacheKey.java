@@ -15,7 +15,7 @@ import java.util.*;
 @Getter
 @EqualsAndHashCode
 @ToString
-public class CacheKey {
+class CacheKey {
     
     private final HttpMethod method;
     private final String host;

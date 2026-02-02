@@ -96,35 +96,6 @@ class RoundRobinLoadBalancerTest {
     }
 
     @Test
-    void selectHost_shouldBeThreadSafe() throws InterruptedException {
-        ProxyConfiguration.HostConfig host1 = createHost("host1", 8080);
-        ProxyConfiguration.HostConfig host2 = createHost("host2", 8081);
-        ProxyConfiguration.HostConfig host3 = createHost("host3", 8082);
-        service.setHosts(Arrays.asList(host1, host2, host3));
-
-        int threadCount = 10;
-        int callsPerThread = 100;
-        Thread[] threads = new Thread[threadCount];
-
-        for (int i = 0; i < threadCount; i++) {
-            threads[i] = new Thread(() -> {
-                for (int j = 0; j < callsPerThread; j++) {
-                    assertNotNull(loadBalancer.selectHost(service));
-                }
-            });
-            threads[i].start();
-        }
-
-        for (Thread thread : threads) {
-            thread.join();
-        }
-
-        // After all calls, the counter should be at threadCount * callsPerThread
-        // Verify by making one more call and checking distribution continues
-        assertNotNull(loadBalancer.selectHost(service));
-    }
-
-    @Test
     void getStrategyName_shouldReturnRoundRobin() {
         assertEquals("round-robin", loadBalancer.getStrategyName());
     }

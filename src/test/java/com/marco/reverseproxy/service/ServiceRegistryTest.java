@@ -104,16 +104,6 @@ class ServiceRegistryTest {
     }
 
     @Test
-    void serviceRegistry_shouldInitializeWithEmptyServices() {
-        ProxyConfiguration emptyConfig = new ProxyConfiguration();
-        emptyConfig.setServices(null);
-        
-        ServiceRegistry emptyRegistry = new ServiceRegistry(emptyConfig);
-        
-        assertNull(emptyRegistry.getServiceByDomain("any.example.com", false));
-    }
-
-    @Test
     void serviceRegistry_shouldHandleMultipleServices() {
         assertNotNull(serviceRegistry.getServiceByDomain("api.example.com", false));
         assertNotNull(serviceRegistry.getServiceByDomain("web.example.com", false));

@@ -35,8 +35,7 @@ public class ProxyController {
      */
     @RequestMapping("/**")
     public Mono<ResponseEntity<byte[]>> handleRequest(ServerHttpRequest request) {
-        // Get client IP (considering X-Forwarded-For if behind another proxy)
-        String clientIp = request.getRemoteAddress() != null 
+        String clientIp = request.getRemoteAddress() != null
             ? request.getRemoteAddress().getAddress().getHostAddress() 
             : "unknown";
             
@@ -67,7 +66,7 @@ public class ProxyController {
                     }
                 })
                 .onErrorResume(error -> {
-                    // Handle DataBufferLimitException or message containing "Exceeded" or "exceeded"
+                    // Handle DataBufferLimitException
                     if (error.getClass().getSimpleName().equals("DataBufferLimitException") ||
                         (error.getMessage() != null && 
                          error.getMessage().equalsIgnoreCase("exceeded"))) {

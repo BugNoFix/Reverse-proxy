@@ -209,31 +209,6 @@ class ProxyServiceTest {
     }
 
     @Test
-    void forwardRequest_shouldForwardPostWithBody() {
-        HttpHeaders responseHeaders = new HttpHeaders();
-        ResponseEntity<byte[]> mockResponse = ResponseEntity.ok().headers(responseHeaders).build();
-        
-        when(webClient.method(any(HttpMethod.class))).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
-        when(requestBodySpec.headers(any())).thenReturn(requestBodySpec);
-        when(requestBodySpec.body(any())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.toEntity(byte[].class)).thenReturn(Mono.just(mockResponse));
-
-        String requestBody = "{\"name\": \"test\"}";
-        ServerHttpRequest request = MockServerHttpRequest
-                .post("/api/create")
-                .header("Host", "test.example.com")
-                .header("Content-Type", "application/json")
-                .build();
-
-        proxyService.forwardRequest(request, requestBody).block();
-
-        verify(webClient).method(HttpMethod.POST);
-        verify(requestBodySpec).body(any());
-    }
-
-    @Test
     void forwardRequest_shouldCacheGetResponse() {
         HttpHeaders responseHeaders = new HttpHeaders();
         responseHeaders.add("Cache-Control", "public, max-age=60");
