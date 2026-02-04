@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: reverse-proxy-test
+  profiles:
+    active: test
+
+# Minimal test configuration (overrides main defaults)
+proxy:
+  listen:
+    address: "127.0.0.1"
+    port: 0
+  services:
+    - name: test-service
+      domain: test.example.com
+      strategy: round-robin
+      hosts:
+        - address: "127.0.0.1"
+          port: 18090
+        - address: "127.0.0.1"
+          port: 18091
+
+server:
+  address: ${proxy.listen.address}
+  port: ${proxy.listen.port}
+  netty:
+    connection-timeout: 5s
+    idle-timeout: 30s
