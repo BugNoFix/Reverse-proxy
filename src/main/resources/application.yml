@@ -12,16 +12,10 @@ logging:
     reactor.netty: WARN
     io.netty: WARN
 
-# Server configuration (Netty)
+# Server configuration
 server:
-  address: 127.0.0.1
-  port: 8080
+  address: ${proxy.listen.address}
+  port: ${proxy.listen.port}
   netty:
     connection-timeout: 5s
     idle-timeout: 30s
-
-# Common proxy configuration (shared across all profiles)
-proxy:
-  listen:
-    address: "127.0.0.1"
-    port: 8080
