@@ -1,23 +1,11 @@
-# Local development profile
-# Use: mvn spring-boot:run -Dspring-boot.run.profiles=local
-# Or set SPRING_PROFILES_ACTIVE=local
-
 # Proxy services configuration for LOCAL environment
 proxy:
   services:
     - name: my-service
       domain: my-service.my-company.com
-      strategy: round-robin  # Options: random, round-robin
+      strategy: round-robin
       hosts:
         - address: "127.0.0.1"
           port: 9090
         - address: "127.0.0.1"
           port: 9091
-
-# Optional: additional local services for testing
-    # - name: another-service
-    #   domain: another-service.local
-    #   strategy: random
-    #   hosts:
-    #     - address: "127.0.0.1"
-    #       port: 9092

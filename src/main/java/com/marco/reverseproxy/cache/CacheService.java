@@ -40,7 +40,7 @@ public class CacheService {
         }
     );
 
-    // Index from simple cache key (method+host+uri) to Vary header value
+    // Maps a simple key (method+host+uri) to the 'Vary' header value required to perform a full lookup
     private final Map<CacheKey, String> varyIndex = new ConcurrentHashMap<>();
 
     private static final Pattern MAX_AGE_PATTERN = Pattern.compile("max-age\\s*=\\s*(\\d+)");
@@ -48,11 +48,6 @@ public class CacheService {
 
     /**
      * Get cached response if available and valid
-     * 
-     * @param method HTTP method
-     * @param uri Request URI
-     * @param requestHeaders Request headers
-     * @return Cached response or null if not cached/invalid
      */
     public CachedResponse get(HttpMethod method, String host, String uri, HttpHeaders requestHeaders) {
         // Only cache GET and HEAD
@@ -82,7 +77,6 @@ public class CacheService {
             return null;
         }
 
-        // Check if cacheable (atomic operation with removal)
         if (!cachedResponse.isCacheable()) {
             log.debug("Cache entry not cacheable (no-store or private): {} {}", method, uri);
 
@@ -108,17 +102,10 @@ public class CacheService {
 
     /**
      * Store response in cache
-     * 
-     * @param method HTTP method
-     * @param uri Request URI
-     * @param requestHeaders Request headers
-     * @param statusCode Response status code
-     * @param responseHeaders Response headers
-     * @param body Response body
      */
     public void put(HttpMethod method, String host, String uri, HttpHeaders requestHeaders, 
                    HttpStatusCode statusCode, HttpHeaders responseHeaders, byte[] body) {
-        // Only cache GET and HEAD with 200 OK
+
         if ((method != HttpMethod.GET && method != HttpMethod.HEAD) || statusCode.value() != 200) {
             return;
         }
@@ -138,21 +125,23 @@ public class CacheService {
 
         if ("*".equals(varyHeader)) {
             log.debug("Not caching due to Vary: * for {} {}", method, uri);
-            cache.remove(simpleKey);
-            varyIndex.remove(simpleKey);
             return;
         }
 
         if (varyHeader != null && !varyHeader.isBlank()) {
             key = CacheKey.create(method, host, uri, requestHeaders, varyHeader);
-            varyIndex.put(simpleKey, varyHeader);
+            synchronized (cache) {
+                varyIndex.put(simpleKey, varyHeader);
+                cache.put(key, cachedResponse);
+            }
             log.debug("Caching with Vary: {} {} (Vary: {})", method, uri, varyHeader);
         } else {
             key = simpleKey;
-            varyIndex.remove(simpleKey);
+            synchronized (cache) {
+                varyIndex.remove(simpleKey);
+                cache.put(key, cachedResponse);
+            }
         }
-
-        cache.put(key, cachedResponse);
 
         log.info("Cached response: {} {} (max-age: {}s, has-etag: {}, has-last-modified: {})",
                 method, uri, cachedResponse.getMaxAgeSeconds(), 
@@ -213,6 +202,7 @@ public class CacheService {
             varyIndex.remove(getKey);
             varyIndex.remove(headKey);
 
+            // Must iterate to remove all variants dependent on Vary header
             cache.keySet().removeIf(key ->
                     Objects.equals(key.getHost(), host)
                             && Objects.equals(key.getUri(), uri)

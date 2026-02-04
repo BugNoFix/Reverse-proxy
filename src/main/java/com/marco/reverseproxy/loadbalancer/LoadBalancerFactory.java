@@ -27,8 +27,8 @@ public class LoadBalancerFactory {
     public LoadBalancer getLoadBalancer(String strategyName) {
         LoadBalancer loadBalancer = loadBalancers.get(strategyName);
         if (loadBalancer == null) {
-            log.warn("Load balancer strategy '{}' not found, using 'random' as default", strategyName);
-            loadBalancer = loadBalancers.get("random");
+            log.warn("Load balancer strategy '{}' not found, using 'round-robin' as default", strategyName);
+            loadBalancer = loadBalancers.get("round-robin");
         }
         return loadBalancer;
     }

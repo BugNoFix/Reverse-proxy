@@ -31,9 +31,9 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
             return null;
         }
 
-        // Get or create counter for this service
+        // Get or create counter for this service (use domain as unique key)
         AtomicInteger counter = serviceCounters.computeIfAbsent(
-                service.getName(),
+                service.getDomain(),
                 k -> new AtomicInteger(0)
         );
 

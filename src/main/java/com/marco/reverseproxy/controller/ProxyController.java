@@ -15,10 +15,6 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 
-/**
- * Fully reactive controller that receives all incoming requests and forwards them
- * Uses Spring WebFlux with Netty for non-blocking I/O
- */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -31,7 +27,7 @@ public class ProxyController {
     private static final DefaultDataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
     /**
-     * Catch-all endpoint that handles all HTTP methods and paths (fully reactive)
+     * Catch-all endpoint that handles all HTTP methods and paths
      */
     @RequestMapping("/**")
     public Mono<ResponseEntity<byte[]>> handleRequest(ServerHttpRequest request) {

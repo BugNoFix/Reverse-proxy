@@ -9,7 +9,7 @@ import java.time.Instant;
 
 /**
  * Cached HTTP response with validation metadata
- * Supports ETag and Last-Modified validation per RFC 7232
+ * Supports ETag and Last-Modified validation per RFC (9110)
  */
 @Data
 @Builder

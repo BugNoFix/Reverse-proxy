@@ -10,7 +10,7 @@ import java.util.*;
 
 /**
  * Cache key that includes HTTP method, URI, and Vary headers
- * Supports RFC 7234 Vary header for content negotiation
+ * Supports RFC 9110 Vary header for content negotiation
  */
 @Getter
 @EqualsAndHashCode
@@ -31,12 +31,6 @@ class CacheKey {
 
     /**
      * Create cache key with Vary header support
-     * 
-     * @param method HTTP method
-     * @param uri Full URI (path + query)
-     * @param requestHeaders Request headers
-     * @param varyHeaderValue Value of Vary header from cached response (null if first request)
-     * @return Cache key
      */
     public static CacheKey create(HttpMethod method, String host, String uri, HttpHeaders requestHeaders, String varyHeaderValue) {
         Map<String, String> varyHeaders = new HashMap<>();
@@ -57,7 +51,7 @@ class CacheKey {
     }
 
     /**
-     * Create simple cache key without Vary support (for initial cache lookup)
+     * Create simple cache key without Vary support
      */
     public static CacheKey createSimple(HttpMethod method, String host, String uri) {
         return new CacheKey(method, host, uri, Collections.emptyMap());

@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Core proxy service that handles request forwarding (fully reactive)
+ * Core proxy service that handles request forwarding
  */
 @Slf4j
 @Service
@@ -45,7 +45,7 @@ public class ProxyService {
                         CacheService cacheService) {
         this.serviceRegistry = serviceRegistry;
         this.loadBalancerFactory = loadBalancerFactory;
-        this.webClient = webClientBuilder.build(); // Reuse single instance for performance
+        this.webClient = webClientBuilder.build();
         this.cacheService = cacheService;
     }
 
@@ -83,8 +83,8 @@ public class ProxyService {
         }
         CachedResponse cachedResponse = cacheService.get(method, normalizedHostHeader, uri, request.getHeaders());
 
-        if (cachedResponse != null && cachedResponse.isFresh()) {
-            // Cache hit and fresh - return cached response
+        if (cachedResponse != null && !cachedResponse.requiresRevalidation()) {
+            // Cache hit, fresh, and doesn't require revalidation - return cached response
             log.info("Cache HIT (fresh): {} {}", method, uri);
             return Mono.just(ResponseEntity.status(cachedResponse.getStatusCode())
                     .headers(cachedResponse.getHeaders())
@@ -209,6 +209,9 @@ public class ProxyService {
                 });
     }
 
+    /**
+     * Filters hop-by-hop headers and adds X-Forwarded headers for the downstream request.
+     */
     private HttpHeaders prepareHeaders(ServerHttpRequest request) {
         HttpHeaders headers = new HttpHeaders();
 
@@ -217,10 +220,9 @@ public class ProxyService {
         Set<String> hopByHop = new HashSet<>(HOP_BY_HOP_HEADERS);
         hopByHop.addAll(parseConnectionHeaderTokens(request.getHeaders()));
 
-        // Copy all headers except hop-by-hop headers and Host (backend has its own host)
+        // Copy all headers except hop-by-hop headers and Host
         request.getHeaders().forEach((headerName, headerValues) -> {
-            if (!isHopByHopHeader(headerName) && !headerName.equalsIgnoreCase("host")
-                    && !hopByHop.contains(headerName.toLowerCase())) {
+            if (!headerName.equalsIgnoreCase("host") && !hopByHop.contains(headerName.toLowerCase())) {
                 headerValues.forEach(headerValue -> {
                     headers.add(headerName, headerValue);
                 });
@@ -245,31 +247,34 @@ public class ProxyService {
         return headers;
     }
 
+    /**
+     * Filters hop-by-hop headers from the downstream response.
+     */
     private HttpHeaders filterResponseHeaders(HttpHeaders responseHeaders) {
         HttpHeaders filteredHeaders = new HttpHeaders();
         Set<String> hopByHop = new HashSet<>(HOP_BY_HOP_HEADERS);
         hopByHop.addAll(parseConnectionHeaderTokens(responseHeaders));
         responseHeaders.forEach((name, values) -> {
-            if (!isHopByHopHeader(name) && !hopByHop.contains(name.toLowerCase())) {
+            if (!hopByHop.contains(name.toLowerCase())) {
                 filteredHeaders.addAll(name, values);
             }
         });
         return filteredHeaders;
     }
 
-    // Extracts additional hop-by-hop header names from the Connection header.
+    /**
+     * Extracts additional hop-by-hop header names from the Connection header.
+     */
     private Set<String> parseConnectionHeaderTokens(HttpHeaders headers) {
         Set<String> tokens = new HashSet<>();
         if (headers == null) {
             return tokens;
         }
 
-        List<String> connectionValues = headers.getOrEmpty("Connection");
-        for (String value : connectionValues) {
-            if (value == null || value.isBlank()) {
-                continue;
-            }
-            String[] parts = value.split(",");
+        String connectionValue = headers.getFirst("Connection");
+
+        if (connectionValue != null && !connectionValue.isBlank()) {
+            String[] parts = connectionValue.split(",");
             for (String part : parts) {
                 String token = part.trim().toLowerCase();
                 if (!token.isEmpty()) {
@@ -277,12 +282,7 @@ public class ProxyService {
                 }
             }
         }
-
         return tokens;
-    }
-
-    private boolean isHopByHopHeader(String headerName) {
-        return HOP_BY_HOP_HEADERS.contains(headerName.toLowerCase());
     }
 
     private boolean isUnsafeMethod(HttpMethod method) {
