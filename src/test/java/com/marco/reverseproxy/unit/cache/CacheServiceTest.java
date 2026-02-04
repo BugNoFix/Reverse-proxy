@@ -1,5 +1,7 @@
-package com.marco.reverseproxy.cache;
+package com.marco.reverseproxy.unit.cache;
 
+import com.marco.reverseproxy.cache.CacheService;
+import com.marco.reverseproxy.cache.CachedResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;

@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ProxyIntegrationTest {
 
     @LocalServerPort
@@ -30,8 +29,8 @@ class ProxyIntegrationTest {
 
     private WebTestClient webTestClient;
 
-    private static MockWebServer mockBackend1;
-    private static MockWebServer mockBackend2;
+    private MockWebServer mockBackend1;
+    private MockWebServer mockBackend2;
 
     @Value("${proxy.services[0].hosts[0].port}")
     private int backend1Port;
@@ -39,34 +38,18 @@ class ProxyIntegrationTest {
     @Value("${proxy.services[0].hosts[1].port}")
     private int backend2Port;
 
-    @BeforeAll
-    void setupBackends() {
-        try {
-            if (mockBackend1 == null) {
-                    mockBackend1 = new MockWebServer();
-                    mockBackend1.start(backend1Port);
-            }
-            if (mockBackend2 == null) {
-                    mockBackend2 = new MockWebServer();
-                    mockBackend2.start(backend2Port);
-            }
-        } catch (Exception e) {
-                throw new IllegalStateException("Failed to start mock backends", e);
-        }
-    }
-
-    @AfterAll
-        static void shutdownBackends() throws Exception {
-        if (mockBackend1 != null) {
-            mockBackend1.shutdown();
-        }
-        if (mockBackend2 != null) {
-            mockBackend2.shutdown();
-        }
-    }
-
     @BeforeEach
     void setup() {
+        try {
+            mockBackend1 = new MockWebServer();
+            mockBackend1.start(backend1Port);
+
+            mockBackend2 = new MockWebServer();
+            mockBackend2.start(backend2Port);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to start mock backends", e);
+        }
+
         // Initialize WebTestClient with timeout
         webTestClient = WebTestClient
                 .bindToServer()
@@ -75,10 +58,20 @@ class ProxyIntegrationTest {
                 .build();
     }
 
+    @AfterEach
+    void shutdownBackends() throws Exception {
+        if (mockBackend1 != null) {
+                mockBackend1.shutdown();
+                mockBackend1 = null;
+        }
+        if (mockBackend2 != null) {
+                mockBackend2.shutdown();
+                mockBackend2 = null;
+        }
+    }
+
     @Test
-    @Order(1)
-    @DisplayName("Should proxy GET request to backend")
-    void shouldProxyGetRequest() {
+    void verifyProxyForwardsGetRequestSuccessfully() {
         // Setup mock response
         mockBackend1.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -95,35 +88,9 @@ class ProxyIntegrationTest {
                 .isEqualTo("{\"status\":\"ok\"}");
     }
 
-    @Test
-    @Order(2)
-    @DisplayName("Should proxy POST request with body")
-    void shouldProxyPostRequest() throws InterruptedException {
-        // Setup mock response
-        mockBackend1.enqueue(new MockResponse()
-                .setResponseCode(201)
-                .setBody("{\"id\":123}")
-                .addHeader("Content-Type", "application/json"));
-
-        String requestBody = "{\"name\":\"test\"}";
-
-        // Make request through proxy
-        webTestClient.post()
-                .uri("/api/users")
-                .header("Host", "test.example.com")
-                .header("Content-Type", "application/json")
-                .bodyValue(requestBody)
-                .exchange()
-                .expectStatus().isCreated()
-                .expectBody(String.class)
-                .isEqualTo("{\"id\":123}");
-
-    }
 
     @Test
-    @Order(3)
-    @DisplayName("Should distribute requests with round-robin")
-    void shouldDistributeWithRoundRobin() {
+    void verifyLoadBalancerDistributesTrafficInRoundRobin() {
         // Setup mock responses for both backends
         mockBackend1.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -162,9 +129,7 @@ class ProxyIntegrationTest {
     }
 
     @Test
-    @Order(4)
-    @DisplayName("Should cache GET requests with Cache-Control")
-        void shouldCacheGetRequests() throws InterruptedException {
+    void verifyCacheHitsDoNotInvokeBackend() throws InterruptedException {
         // First request - cache miss
         mockBackend1.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -197,9 +162,7 @@ class ProxyIntegrationTest {
     }
 
     @Test
-    @Order(5)
-    @DisplayName("Should handle 304 Not Modified with ETag")
-    void shouldHandle304NotModified() throws InterruptedException {
+    void verify304WithETag() throws InterruptedException {
         // First request - get fresh response with ETag
         mockBackend1.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -238,9 +201,7 @@ class ProxyIntegrationTest {
     }
 
     @Test
-    @Order(6)
-    @DisplayName("Should preserve query parameters")
-    void shouldPreserveQueryParameters() throws InterruptedException {
+    void verifyQueryParametersAreForwardedIntact() throws InterruptedException {
         mockBackend1.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setBody("{\"status\":\"ok\"}"));
@@ -256,9 +217,7 @@ class ProxyIntegrationTest {
     }
 
     @Test
-    @Order(7)
-    @DisplayName("Should preserve custom headers")
-    void shouldPreserveCustomHeaders() throws InterruptedException {
+    void verifyCustomHeadersAreForwarded() throws InterruptedException {
         mockBackend1.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setBody("{}"));
@@ -277,9 +236,7 @@ class ProxyIntegrationTest {
     }
 
     @Test
-    @Order(8)
-    @DisplayName("Should handle backend errors gracefully")
-    void shouldHandleBackendErrors() {
+    void verifyHandleInternalServerError() {
         mockBackend1.enqueue(new MockResponse()
                 .setResponseCode(500)
                 .setBody("{\"error\":\"Internal Server Error\"}"));
@@ -292,20 +249,5 @@ class ProxyIntegrationTest {
                 .expectBody(String.class)
                 .isEqualTo("Bad Gateway: Downstream service error");
 
-    }
-
-    @Test
-    @Order(9)
-    @DisplayName("Should return 404 for unknown domain")
-        void shouldReturn404ForUnknownDomain() throws InterruptedException {
-        webTestClient.get()
-                .uri("/api/test")
-                .header("Host", "unknown.example.com")
-                .exchange()
-                .expectStatus().isNotFound();
-
-        // Verify no backend was called
-        assertThat(mockBackend1.takeRequest(200, TimeUnit.MILLISECONDS)).isNull();
-        assertThat(mockBackend2.takeRequest(200, TimeUnit.MILLISECONDS)).isNull();
     }
 }

@@ -1,6 +1,7 @@
-package com.marco.reverseproxy.service;
+package com.marco.reverseproxy.unit.service;
 
 import com.marco.reverseproxy.config.ProxyConfiguration;
+import com.marco.reverseproxy.service.ServiceRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

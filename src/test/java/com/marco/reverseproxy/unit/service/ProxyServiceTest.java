@@ -1,10 +1,12 @@
-package com.marco.reverseproxy.service;
+package com.marco.reverseproxy.unit.service;
 
 import com.marco.reverseproxy.cache.CacheService;
 import com.marco.reverseproxy.cache.CachedResponse;
 import com.marco.reverseproxy.config.ProxyConfiguration;
 import com.marco.reverseproxy.loadbalancer.LoadBalancer;
 import com.marco.reverseproxy.loadbalancer.LoadBalancerFactory;
+import com.marco.reverseproxy.service.ProxyService;
+import com.marco.reverseproxy.service.ServiceRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

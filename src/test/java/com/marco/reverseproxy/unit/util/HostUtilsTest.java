@@ -1,5 +1,6 @@
-package com.marco.reverseproxy.util;
+package com.marco.reverseproxy.unit.util;
 
+import com.marco.reverseproxy.util.HostUtils;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

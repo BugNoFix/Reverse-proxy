@@ -1,6 +1,7 @@
-package com.marco.reverseproxy.loadbalancer;
+package com.marco.reverseproxy.unit.loadbalancer;
 
 import com.marco.reverseproxy.config.ProxyConfiguration;
+import com.marco.reverseproxy.loadbalancer.RandomLoadBalancer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
