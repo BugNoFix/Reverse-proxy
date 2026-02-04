@@ -1,7 +1,5 @@
 # Reverse Proxy
 
-A production-ready, reactive (non-blocking) HTTP reverse proxy built with Spring Boot WebFlux (Netty), featuring host-based routing, multiple load-balancing strategies, and RFC 7234-compliant caching with conditional revalidation (ETag / Last-Modified).
-
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.java.net/projects/jdk/17/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.2-green.svg)](https://spring.io/projects/spring-boot)
 [![WebFlux](https://img.shields.io/badge/WebFlux-Reactive-blue.svg)](https://docs.spring.io/spring-framework/reference/web/webflux.html)
@@ -33,12 +31,10 @@ This service acts as a **high-performance reverse proxy** that receives inbound 
 
 ## Architectural Design
 
-The system is architected as a high-throughput **Reactive Reverse Proxy**, leveraging the **Reactor** pattern to handle I/O operations asynchronously.
-
-- **⚡ Non-Blocking Event Loop**: Built on **Netty** and **Spring WebFlux**, the proxy uses a fixed number of event loop threads rather than a "thread-per-request" model. This architecture minimizes context switching and memory overhead, enabling the handling of thousands of concurrent connections.
+- **⚡ Non-Blocking Event Loop**: Built on **Netty** and **Spring WebFlux**, the proxy uses a fixed number of event loop threads. This architecture minimizes context switching and memory overhead, enabling the handling of thousands of concurrent connections.
 - **⚖️ Pluggable Load Balancing Strategy**: Routing logic implements the *Strategy Pattern* via the `LoadBalancer` interface. This decoupling allows distinct algorithms (e.g., Round-Robin, Random) to be applied per-service in `application.yml` without code changes.
-- **💾 RFC-Compliant Caching Layer**: The caching subsystem acts as a transparent shared cache (RFC 7234). It implements validation logic using `ETag` / `Last-Modified`, supports `Vary`, and injects the standard `Age` header on cache-served responses.
-- **🔧 Protocol Compliance Engine**: A dedicated filter chain enforces strict HTTP compliance. It manages `X-Forwarded-*` headers for client traceability and strips Hop-by-Hop headers (e.g., `Connection`, `Te`) to avoid protocol ambiguity.
+- **💾 HTTP-Compliant Caching Layer**: The caching system implements validation logic using `ETag` / `Last-Modified`, supports `Vary`
+- **🔧 Protocol Compliance Engine**: The system manages `X-Forwarded-*` headers for client traceability and strips both standard (e.g., `Connection`, `Keep-Alive`) and dynamic Hop-by-Hop headers (specified in `Connection` header).
 
 
 
@@ -87,35 +83,8 @@ Configuration is split into a **baseline** file plus **profile-specific** overri
 ### Files
 
 - `src/main/resources/application.yml`: shared defaults (server bind, logging, common proxy settings).
-- `src/main/resources/application-local.yml`: local environment values (typically `proxy.services` pointing to `127.0.0.1`).
-- `src/main/resources/application-prod.yml`: production environment values (typically `proxy.services` pointing to private IPs / hostnames).
-
-### Profiles (how the right file is chosen)
-
-Spring Boot always loads `application.yml` first, then overlays the active profile file (e.g. `application-local.yml`).
-
-Example (shared baseline in `application.yml`):
-
-```yaml
-proxy:
-  listen:
-    address: "127.0.0.1"
-    port: 8080
-```
-
-Example (local backends in `application-local.yml`):
-
-```yaml
-proxy:
-  services:
-    - name: my-service
-      domain: my-service.my-company.com
-      strategy: round-robin
-      hosts:
-        - address: "127.0.0.1"
-          port: 9090
-```
-
+- `src/main/resources/application-local.yml`: local environment values 
+- `src/main/resources/application-prod.yml`: production environment values
 ---
 
 ## Load Balancing
@@ -132,7 +101,7 @@ Selects a random host for each request. Good for simple load distribution withou
 
 ## Caching
 
-Implements RFC 7234 compliant HTTP caching.
+Implements RFC 9110 compliant HTTP caching.
 
 ### Supported Features
 - **Validation**: Conditional requests using `ETag` and `Last-Modified`.
@@ -166,14 +135,3 @@ CacheKey = {
   varyHeaders: Map       // Headers specified in Vary
 }
 ```
-
----
-
-## Testing
-
-- Run unit tests: `./mvnw test`
-- Full clean + test: `./mvnw clean test`
-- (Optional) Start mock backends: `./start-mock-servers.sh`
-- (Optional) Stop mock backends: `./stop-mock-servers.sh`
-- (Optional) Run end-to-end checks: `./test-proxy.sh`
-
