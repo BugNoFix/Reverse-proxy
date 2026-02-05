@@ -9,7 +9,7 @@ import java.time.Instant;
 
 /**
  * Cached HTTP response with validation metadata
- * Supports ETag and Last-Modified validation per RFC (9110)
+ * Supports ETag and Last-Modified validation per RFC (9111)
  */
 @Data
 @Builder
@@ -41,9 +41,6 @@ public class CachedResponse {
      * Check if cache entry is fresh (within TTL)
      */
     public boolean isFresh() {
-        if (noStore || isPrivate) {
-            return false;
-        }
         
         Instant now = Instant.now();
         long ageSeconds = now.getEpochSecond() - cachedAt.getEpochSecond();
@@ -62,7 +59,9 @@ public class CachedResponse {
      * Check if entry requires revalidation
      */
     public boolean requiresRevalidation() {
-        return noCache || mustRevalidate || proxyRevalidate || !isFresh();
+        if (proxyRevalidate)
+            return noCache || (proxyRevalidate && !isFresh());
+        return noCache || (mustRevalidate && !isFresh());
     }
 
     /**

@@ -49,30 +49,6 @@ class CachedResponseTest {
     }
 
     @Test
-    void isFresh_shouldReturnFalseForNoStore() {
-        CachedResponse response = CachedResponse.builder()
-                .cachedAt(Instant.now())
-                .maxAgeSeconds(60L)
-                .noStore(true)
-                .isPrivate(false)
-                .build();
-
-        assertFalse(response.isFresh());
-    }
-
-    @Test
-    void isFresh_shouldReturnFalseForPrivate() {
-        CachedResponse response = CachedResponse.builder()
-                .cachedAt(Instant.now())
-                .maxAgeSeconds(60L)
-                .noStore(false)
-                .isPrivate(true)
-                .build();
-
-        assertFalse(response.isFresh());
-    }
-
-    @Test
     void isFresh_shouldReturnFalseWhenNoMaxAge() {
         CachedResponse response = CachedResponse.builder()
                 .cachedAt(Instant.now())
@@ -95,9 +71,9 @@ class CachedResponseTest {
     }
 
     @Test
-    void requiresRevalidation_shouldReturnTrueForMustRevalidate() {
+    void requiresRevalidation_shouldReturnTrueForMustRevalidateIfStale() {
         CachedResponse response = CachedResponse.builder()
-                .cachedAt(Instant.now())
+                .cachedAt(Instant.now().minusSeconds(100))
                 .maxAgeSeconds(60L)
                 .mustRevalidate(true)
                 .build();
@@ -106,9 +82,9 @@ class CachedResponseTest {
     }
 
     @Test
-    void requiresRevalidation_shouldReturnTrueForProxyRevalidate() {
+    void requiresRevalidation_shouldReturnTrueForProxyRevalidateIfStale() {
         CachedResponse response = CachedResponse.builder()
-                .cachedAt(Instant.now())
+                .cachedAt(Instant.now().minusSeconds(100))
                 .maxAgeSeconds(60L)
                 .proxyRevalidate(true)
                 .build();
@@ -116,17 +92,6 @@ class CachedResponseTest {
         assertTrue(response.requiresRevalidation());
     }
 
-    @Test
-    void requiresRevalidation_shouldReturnTrueWhenStale() {
-        CachedResponse response = CachedResponse.builder()
-                .cachedAt(Instant.now().minusSeconds(120))
-                .maxAgeSeconds(60L)
-                .noStore(false)
-                .isPrivate(false)
-                .build();
-
-        assertTrue(response.requiresRevalidation());
-    }
 
     @Test
     void isCacheable_shouldReturnTrueForPublic() {

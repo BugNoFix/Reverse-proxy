@@ -352,6 +352,7 @@ class ProxyServiceTest {
                 .statusCode(HttpStatus.OK)
                 .cachedAt(Instant.now().minusSeconds(100))
                 .maxAgeSeconds(30L)
+                .mustRevalidate(true)
                 .etag("\"v1\"")
                 .isPublic(true)
                 .build();

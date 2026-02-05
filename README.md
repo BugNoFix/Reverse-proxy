@@ -21,7 +21,7 @@
 This service acts as a **high-performance reverse proxy** that receives inbound HTTP requests and intelligently routes them to downstream services based on the request's `Host` header. It leverages Spring WebFlux's reactive architecture to handle thousands of concurrent connections with minimal resource overhead.
 
 **Tech Stack**
-- **Java 17** - Modern LTS version with performance improvements
+- **Java 17** 
 - **Spring Boot 4.0.2** - Latest stable release
 - **Spring WebFlux** - Reactive stack with non-blocking I/O
 - **Netty Runtime** - High-performance async event-driven network framework
@@ -101,7 +101,7 @@ Selects a random host for each request. Good for simple load distribution withou
 
 ## Caching
 
-Implements RFC 9110 compliant HTTP caching.
+Implements RFC 9111 compliant HTTP caching.
 
 ### Supported Features
 - **Validation**: Conditional requests using `ETag` and `Last-Modified`.

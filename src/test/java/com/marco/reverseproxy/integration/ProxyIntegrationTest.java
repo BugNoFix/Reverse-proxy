@@ -167,7 +167,7 @@ class ProxyIntegrationTest {
         mockBackend1.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setBody("{\"data\":\"etag-test\"}")
-                .addHeader("Cache-Control", "max-age=0")
+                .addHeader("Cache-Control", "max-age=0; must-revalidate")
                 .addHeader("ETag", "\"xyz789\""));
 
         // Second request - backend returns 304 Not Modified
